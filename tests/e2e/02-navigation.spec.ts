@@ -1,12 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { loginAs } from "./helpers";
 
-export async function loginAs(page: Page, email: string, password = process.env.DEMO_PASSWORD ?? "Demo@2026local") {
-  await page.goto("/login");
-  await page.getByLabel("E-mail").fill(email);
-  await page.getByLabel("Senha").fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"));
-}
 
 const ADMIN_PAGES = [
   "/app", "/app/config", "/app/config/servicos", "/app/config/alcadas", "/app/config/calendarios", "/app/config/tabelas-preco", "/app/config/condicoes-pagamento",

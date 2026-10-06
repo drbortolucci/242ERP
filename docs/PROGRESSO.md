@@ -3,8 +3,8 @@
 Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada etapa.
 
 ## Estado atual
-- Etapa em andamento: **Etapa 1 — Fundação SaaS**
-- Branch de trabalho: `etapa-1-fundacao`
+- Etapa em andamento: **Etapa 3 — Operação**
+- Branches: `etapa-1-fundacao` (PR #1), `etapa-2-comercial` (PR #2, empilhado sobre a etapa 1)
 
 ## Dependências externas e decisões
 | Item | Tipo | Situação |
@@ -24,6 +24,10 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - Entregue: ver CHANGELOG 0.1.0. Testes: 36 unitários/integração + 3 E2E.
 - Restrições: provedor de pagamento simulado; e-mail simulado (caixa de saída); MFA por TOTP (sem SMS); SSO pendente.
 - Próximo: Etapa 2 — CRM, propostas, contratos e visão 360° do cliente.
+
+## Etapa 2 — Comercial (concluída)
+- Entregue: ver CHANGELOG 0.2.0. Testes de integração do ciclo comercial completo + 2 E2E.
+- Restrições: assinatura eletrônica certificada não integrada (aceite registrado + comprovação anexada).
 
 ## Como continuar
 1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).

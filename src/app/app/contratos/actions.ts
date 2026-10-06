@@ -1,0 +1,21 @@
+"use server";
+import { z } from "zod";
+import { makeAction } from "@/server/action";
+import * as C from "@/modules/contracts/service";
+import { markCommissionPaid } from "@/modules/commissions/service";
+
+export const createContractFromOrderAction = makeAction(C.contractSchema.extend({ salesOrderId: z.string() }), async (ctx, i) => { const c = await C.createContractFromOrder(ctx, i.salesOrderId, i); return { redirectTo: `/app/contratos/${c.id}` }; });
+export const createContractAction = makeAction(C.contractSchema.extend({ companyId: z.string().min(1), partyId: z.string().min(1) }), async (ctx, i) => { const c = await C.createContract(ctx, i); return { redirectTo: `/app/contratos/${c.id}` }; });
+export const updateContractAction = makeAction(C.contractSchema.extend({ id: z.string() }), async (ctx, i) => { await C.updateContract(ctx, i.id, i); return { revalidate: [`/app/contratos/${i.id}`], message: "Contrato atualizado." }; });
+export const activateContractAction = makeAction(z.object({ id: z.string(), signedAt: z.string().optional(), signatureEvidence: z.string().optional() }), async (ctx, i) => { await C.activateContract(ctx, i.id, { signedAt: i.signedAt || undefined, signatureEvidence: i.signatureEvidence || undefined }); return { revalidate: [`/app/contratos/${i.id}`], message: "Contrato ativado." }; });
+export const contractStatusAction = makeAction(z.object({ id: z.string(), status: z.enum(["SUSPENDED", "ENDED", "CANCELED"]), reason: z.string() }), async (ctx, i) => { await C.setContractStatus(ctx, i.id, i.status, i.reason); return { revalidate: [`/app/contratos/${i.id}`] }; });
+export const addRateAction = makeAction(C.contractRateSchema, async (ctx, i) => { await C.addContractRate(ctx, i); return { revalidate: [`/app/contratos/${i.contractId}`], message: "Tarifa registrada com vigência." }; });
+export const addMilestoneAction = makeAction(C.milestoneSchema, async (ctx, i) => { await C.addMilestone(ctx, i); return { revalidate: [`/app/contratos/${i.contractId}`], message: "Marco incluído." }; });
+export const acceptMilestoneAction = makeAction(z.object({ id: z.string(), acceptedByName: z.string().min(2), contractId: z.string() }), async (ctx, i) => { await C.acceptMilestone(ctx, i.id, i.acceptedByName); return { revalidate: [`/app/contratos/${i.contractId}`], message: "Marco aceito — elegível para faturamento." }; });
+export const createChangeRequestAction = makeAction(C.changeRequestSchema.extend({ back: z.string() }), async (ctx, i) => { await C.createChangeRequest(ctx, i); return { revalidate: [i.back], message: "Solicitação de mudança registrada." }; });
+export const decideChangeRequestAction = makeAction(z.object({ id: z.string(), approve: z.enum(["1", "0"]), back: z.string() }), async (ctx, i) => { const a = await C.decideChangeRequest(ctx, i.id, i.approve === "1"); return { revalidate: [i.back], message: a ? `Aprovada; aditivo nº ${a.number} criado em rascunho.` : "Decisão registrada." }; });
+export const createAmendmentAction = makeAction(C.amendmentSchema, async (ctx, i) => { await C.createAmendment(ctx, i); return { revalidate: [`/app/contratos/${i.contractId}`], message: "Aditivo criado em rascunho." }; });
+export const submitAmendmentAction = makeAction(z.object({ id: z.string(), contractId: z.string() }), async (ctx, i) => { await C.submitAmendment(ctx, i.id); return { revalidate: [`/app/contratos/${i.contractId}`], message: "Aditivo enviado para aprovação." }; });
+export const addPoAction = makeAction(C.poSchema, async (ctx, i) => { await C.addCustomerPo(ctx, i); return { revalidate: [`/app/contratos/${i.contractId}`], message: "OC registrada." }; });
+export const renewalAction = makeAction(z.object({ id: z.string() }), async (ctx, i) => { const o = await C.startRenewal(ctx, i.id); return { redirectTo: `/app/crm/oportunidades/${o.id}` }; });
+export const commissionPaidAction = makeAction(z.object({ id: z.string() }), async (ctx, i) => { await markCommissionPaid(ctx, i.id); return { revalidate: ["/app/comissoes"] }; });
