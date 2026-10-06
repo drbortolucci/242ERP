@@ -9,9 +9,9 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC01 | Criar uma organização SaaS | Cadastro autônomo cria org, usuário admin, trial e configuração padrão | 1 | ✅ | `tests/e2e/01-signup-onboarding.spec.ts`, `provisionOrganization` |
 | AC02 | Selecionar plano e aplicar limites no servidor | Convite/empresa/anexo acima do limite é recusado pelo servidor | 1 | ✅ | `tests/integration/tenant-isolation.test.ts` (limites), `foundation.test.ts` (downgrade bloqueado) |
 | AC03 | Criar e configurar empresas | Onboarding com CNPJ validado, filiais, unidades, centros de custo, contas | 1 | ✅ | Onboarding E2E; CNPJ validado; filial com mesma raiz |
-| AC04 | Cadastrar cliente e oportunidade | CRUD + funil | 2 | ⏳ | |
-| AC05 | Criar e aprovar proposta | Versões, cálculo, alçada, SoD | 2 | ⏳ | |
-| AC06 | Gerar pedido, contrato e projeto | A partir da proposta aceita, com rastreabilidade | 2/3 | ⏳ | |
+| AC04 | Cadastrar cliente e oportunidade | CRUD + funil | 2 | ✅ | `commercial.test.ts`; E2E `03-commercial.spec.ts` |
+| AC05 | Criar e aprovar proposta | Versões, cálculo, alçada, SoD | 2 | ✅ | Alçada por desconto + SoD em `commercial.test.ts`; E2E cria e submete proposta |
+| AC06 | Gerar pedido, contrato e projeto | A partir da proposta aceita, com rastreabilidade | 2/3 | 🟡 | Pedido e contrato ✅ (`commercial.test.ts`); geração de projeto na Etapa 3 |
 | AC07 | Planejar recursos e identificar conflitos | Sobrealocação detectada em horas; exceção exige permissão e justificativa | 3 | ⏳ | |
 | AC08 | Apontar e aprovar horas | Fluxo rascunho→enviado→aprovado→(cliente)→elegível | 3 | ⏳ | |
 | AC09 | Registrar despesa reembolsável | Separa devido ao profissional e cobrável do cliente | 3 | ⏳ | |
@@ -24,7 +24,7 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC16 | Conciliar movimento bancário | Linha de extrato ↔ movimento do livro, sem dupla contagem | 6 | ⏳ | |
 | AC17 | Abrir chamado AMS e medir SLA | Prazos em horário comercial, pausa, violação | 5 | ⏳ | |
 | AC18 | Consumir franquia e calcular excedente | Razão FIFO de horas, excedente valorizado | 5 | ⏳ | |
-| AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | ⏳ | |
+| AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | 🟡 | Visão 360° do cliente ✅; do fornecedor na Etapa 4 |
 | AC20 | Comparar P&L original, revisado, realizado e previsto | Linha de base v1 x vigente x realizado x EAC | 7 | ⏳ | |
 | AC21 | Validar rateios sem duplicar custos | Soma após rateio = soma antes | 7 | ⏳ | |
 | AC22 | Fechar período e impedir alterações indevidas | Operações na competência fechada são recusadas | 7 | ⏳ | |
@@ -33,7 +33,7 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC25 | Impedir acesso entre organizações | Cliente Prisma escopado | 1 | ✅ | `tenant-isolation.test.ts`; exportação isolada em `foundation.test.ts` |
 | AC26 | Respeitar escopos de empresa | Usuário com escopo não lê/grava outra empresa | 1 | ✅ | `tenant-isolation.test.ts` (escopo de empresa leitura/escrita) |
 | AC27 | Estornar operação sem perder histórico | Estorno cria registro inverso vinculado | 6 | ⏳ | |
-| AC28 | Preservar documentos ao alterar tarifas e configurações | Snapshots/vigência | 2/3 | ⏳ | |
+| AC28 | Preservar documentos ao alterar tarifas e configurações | Snapshots/vigência | 2/3 | ✅ | Snapshot de tarifas do contrato e proposta aprovada imutável (`commercial.test.ts`); custo/hora com vigência (`foundation.test.ts`) |
 | AC29 | Impedir duplicidades em operações concorrentes | Medição/cobrança/liquidação simultâneas | 6 | ⏳ | |
 | AC30 | Executar CI no GitHub | Workflow verde | 1 | 🟡 | Workflow `.github/workflows/ci.yml` (aguardando primeira execução no PR) |
 | AC31 | Demonstrar ciclo completo com dados fictícios | Seed gera dados por meio dos serviços (não números fixos) | 8 | ⏳ | |
@@ -51,9 +51,9 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | Config | Configurador central (serviços, funil, perdas, tipos de projeto, papéis, competências, senioridade, preços com vigência, calendários/feriados, categorias, plano de contas, CC, condições/métodos de pagamento, alçadas, SLA, modelos, campos adicionais, módulos, fechamento, fiscal) | ✅ | Telas em `/app/config`; validação e auditoria testadas |
 | Cadastros | Clientes/prospects, contatos, fornecedores, parceiros, profissionais, serviços, competências, empresas/filiais, CC, contas, categorias, condições | ✅ | Duplicidade, papéis múltiplos, inativação, exclusão só sem uso |
 | Cadastros | Importação por planilha com prévia de erros | ✅ | CSV/XLSX, mesmas validações do cadastro manual |
-| CRM | Leads, oportunidades, kanban, atividades, indicadores | ⏳ | |
-| Propostas | Versionamento, cálculo, alçadas, PDF, aceite | ⏳ | |
-| Contratos | Pedido, contrato, tarifas, OC, aditivos, mudança de escopo, alertas, comissões | ⏳ | |
+| CRM | Leads, oportunidades, kanban, atividades, indicadores | ✅ | Multi-serviço; conversão de lead; fórmulas em FORMULAS.md |
+| Propostas | Versionamento, cálculo, alçadas, PDF, aceite | ✅ | PDF interno; aceite registrado com comprovação (🔌 assinatura certificada externa) |
+| Contratos | Pedido, contrato, tarifas, OC, aditivos, mudança de escopo, alertas, comissões | ✅ | Comissão por faturamento/recebimento é acionada na Etapa 6 |
 | Projetos | WBS, linha de base, riscos, status, ETC/EAC, portfólio, Gantt | ⏳ | |
 | Recursos | Alocações, conflitos, capacidade | ⏳ | |
 | Horas | Fluxo, aprovações, ajustes | ⏳ | |

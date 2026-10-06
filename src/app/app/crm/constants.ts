@@ -1,0 +1,1 @@
+export const ACTIVITY_TYPES = [{ value: "CALL", label: "Ligação" }, { value: "MEETING", label: "Reunião" }, { value: "TASK", label: "Tarefa" }, { value: "EMAIL", label: "E-mail" }, { value: "NOTE", label: "Anotação" }, { value: "DECISION", label: "Decisão" }];

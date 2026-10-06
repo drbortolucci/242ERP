@@ -156,6 +156,9 @@ export async function seedSecondOrg(password: string) {
 
 export async function seedDemo(password: string) {
   const demo = await seedFoundation(password);
+  const { seedCommercial } = await import("./seed-commercial");
+  const contracts = await seedCommercial(demo);
+  Object.assign(demo.refs, contracts);
   await seedSecondOrg(password);
   return demo;
 }
