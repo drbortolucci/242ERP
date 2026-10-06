@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { PageHeader, Card, Notice } from "@/components/ui/page";
 import { ActionForm, Checkbox, FormGrid, Input, Select, SubmitButton } from "@/components/ui/form";
+import { pagePerm } from "@/server/page-guard";
 import { requireCtx } from "@/server/auth/next";
-import { requirePerm } from "@/server/context";
 import { getOnboarding, ONBOARDING_STEPS, LEGAL_CHECKLIST } from "@/modules/companies/onboarding";
 import { getSetting } from "@/server/settings";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ const WEEK = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
   const ctx = await requireCtx();
-  requirePerm(ctx, "settings.manage");
+  pagePerm(ctx, "settings.manage");
   const st = await getOnboarding(ctx);
   const step = Math.min(6, Math.max(1, Number((await searchParams).step ?? st.step) || 1));
   const companyId = st.data.empresa?.companyId as string | undefined;

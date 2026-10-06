@@ -24,7 +24,11 @@ export async function saveConfigAction(_: ActionState | undefined, fd: FormData)
   return { ok: true, message: "Registro criado." };
 }
 
-export const toggleConfigAction = makeAction(z.object({ key: z.string(), id: z.string(), active: z.enum(["true", "false"]) }), async (ctx, i) => {
+const toggleConfigActionImpl = makeAction(z.object({ key: z.string(), id: z.string(), active: z.enum(["true", "false"]) }), async (ctx, i) => {
   await setConfigActive(ctx, i.key, i.id, i.active === "true");
   return { revalidate: [`/app/config/${i.key}`], message: i.active === "true" ? "Ativado." : "Inativado." };
 });
+
+export async function toggleConfigAction(prev: ActionState | undefined, fd: FormData) {
+  return toggleConfigActionImpl(prev, fd);
+}

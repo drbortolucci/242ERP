@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { PageHeader, Card } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
 import { ActionForm, FormGrid, Input, SubmitButton } from "@/components/ui/form";
+import { pagePerm } from "@/server/page-guard";
 import { requireCtx } from "@/server/auth/next";
-import { requirePerm } from "@/server/context";
 import { Attachments } from "@/components/attachments";
 import { formatMoney } from "@/lib/money";
 import { formatCivil, todayIn } from "@/lib/dates";
@@ -13,7 +13,7 @@ import { updateCompanyAction, createBankAccountAction } from "../actions";
 export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireCtx();
-  requirePerm(ctx, "company.manage");
+  pagePerm(ctx, "company.manage");
   const c = await ctx.db.company.findFirst({ where: { id } });
   if (!c) notFound();
   const [accounts, units, ccs, parents] = await Promise.all([

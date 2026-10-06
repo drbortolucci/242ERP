@@ -6,9 +6,9 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 
 | # | Critério | Como é verificado | Etapa | Situação | Evidência |
 |---|----------|-------------------|-------|----------|-----------|
-| AC01 | Criar uma organização SaaS | Cadastro autônomo cria org, usuário admin, trial e configuração padrão | 1 | ⏳ | |
-| AC02 | Selecionar plano e aplicar limites no servidor | Convite/empresa/anexo acima do limite é recusado pelo servidor | 1 | ⏳ | |
-| AC03 | Criar e configurar empresas | Onboarding com CNPJ validado, filiais, unidades, centros de custo, contas | 1 | ⏳ | |
+| AC01 | Criar uma organização SaaS | Cadastro autônomo cria org, usuário admin, trial e configuração padrão | 1 | ✅ | `tests/e2e/01-signup-onboarding.spec.ts`, `provisionOrganization` |
+| AC02 | Selecionar plano e aplicar limites no servidor | Convite/empresa/anexo acima do limite é recusado pelo servidor | 1 | ✅ | `tests/integration/tenant-isolation.test.ts` (limites), `foundation.test.ts` (downgrade bloqueado) |
+| AC03 | Criar e configurar empresas | Onboarding com CNPJ validado, filiais, unidades, centros de custo, contas | 1 | ✅ | Onboarding E2E; CNPJ validado; filial com mesma raiz |
 | AC04 | Cadastrar cliente e oportunidade | CRUD + funil | 2 | ⏳ | |
 | AC05 | Criar e aprovar proposta | Versões, cálculo, alçada, SoD | 2 | ⏳ | |
 | AC06 | Gerar pedido, contrato e projeto | A partir da proposta aceita, com rastreabilidade | 2/3 | ⏳ | |
@@ -30,12 +30,12 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC22 | Fechar período e impedir alterações indevidas | Operações na competência fechada são recusadas | 7 | ⏳ | |
 | AC23 | Reabrir período com autorização e auditoria | Exige permissão + justificativa; auditado | 7 | ⏳ | |
 | AC24 | Restringir portal ao cliente autorizado | Cliente vê só seus dados, sem custos/comentários internos | 8 | ⏳ | |
-| AC25 | Impedir acesso entre organizações | Cliente Prisma escopado | 1 | ⏳ | |
-| AC26 | Respeitar escopos de empresa | Usuário com escopo não lê/grava outra empresa | 1 | ⏳ | |
+| AC25 | Impedir acesso entre organizações | Cliente Prisma escopado | 1 | ✅ | `tenant-isolation.test.ts`; exportação isolada em `foundation.test.ts` |
+| AC26 | Respeitar escopos de empresa | Usuário com escopo não lê/grava outra empresa | 1 | ✅ | `tenant-isolation.test.ts` (escopo de empresa leitura/escrita) |
 | AC27 | Estornar operação sem perder histórico | Estorno cria registro inverso vinculado | 6 | ⏳ | |
 | AC28 | Preservar documentos ao alterar tarifas e configurações | Snapshots/vigência | 2/3 | ⏳ | |
 | AC29 | Impedir duplicidades em operações concorrentes | Medição/cobrança/liquidação simultâneas | 6 | ⏳ | |
-| AC30 | Executar CI no GitHub | Workflow verde | 1 | ⏳ | |
+| AC30 | Executar CI no GitHub | Workflow verde | 1 | 🟡 | Workflow `.github/workflows/ci.yml` (aguardando primeira execução no PR) |
 | AC31 | Demonstrar ciclo completo com dados fictícios | Seed gera dados por meio dos serviços (não números fixos) | 8 | ⏳ | |
 
 ## Requisitos por módulo
@@ -44,13 +44,13 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 
 | Módulo | Requisito | Situação | Observações |
 |--------|-----------|----------|-------------|
-| SaaS | Organizações, planos, trial, limites, upgrade/downgrade, cancelamento/reativação, retenção, métricas | ⏳ | |
-| SaaS | Provedor de pagamento de assinatura com webhook autenticado e idempotente | ⏳ | 🔌 provedor real |
-| Segurança | Senha argon2id, bloqueio, recuperação, convites com expiração, MFA TOTP, rate limit | ⏳ | |
-| Segurança | Acesso de suporte autorizado, temporário e auditado | ⏳ | |
-| Config | Configurador central (serviços, funil, perdas, tipos de projeto, papéis, competências, senioridade, preços com vigência, calendários/feriados, categorias, plano de contas, CC, condições/métodos de pagamento, alçadas, SLA, modelos, campos adicionais, módulos, fechamento, fiscal) | ⏳ | |
-| Cadastros | Clientes/prospects, contatos, fornecedores, parceiros, profissionais, serviços, competências, empresas/filiais, CC, contas, categorias, condições | ⏳ | |
-| Cadastros | Importação por planilha com prévia de erros | ⏳ | |
+| SaaS | Organizações, planos, trial, limites, upgrade/downgrade, cancelamento/reativação, retenção, métricas | ✅ | `foundation.test.ts`; painel `/plataforma` |
+| SaaS | Provedor de pagamento de assinatura com webhook autenticado e idempotente | 🔌 | Interface + simulação + webhook HMAC idempotente testado; provedor real pendente |
+| Segurança | Senha argon2id, bloqueio, recuperação, convites com expiração, MFA TOTP, rate limit | ✅ | `foundation.test.ts`, `dates-docs.test.ts` (TOTP RFC 6238) |
+| Segurança | Acesso de suporte autorizado, temporário e auditado | ✅ | `foundation.test.ts` |
+| Config | Configurador central (serviços, funil, perdas, tipos de projeto, papéis, competências, senioridade, preços com vigência, calendários/feriados, categorias, plano de contas, CC, condições/métodos de pagamento, alçadas, SLA, modelos, campos adicionais, módulos, fechamento, fiscal) | ✅ | Telas em `/app/config`; validação e auditoria testadas |
+| Cadastros | Clientes/prospects, contatos, fornecedores, parceiros, profissionais, serviços, competências, empresas/filiais, CC, contas, categorias, condições | ✅ | Duplicidade, papéis múltiplos, inativação, exclusão só sem uso |
+| Cadastros | Importação por planilha com prévia de erros | ✅ | CSV/XLSX, mesmas validações do cadastro manual |
 | CRM | Leads, oportunidades, kanban, atividades, indicadores | ⏳ | |
 | Propostas | Versionamento, cálculo, alçadas, PDF, aceite | ⏳ | |
 | Contratos | Pedido, contrato, tarifas, OC, aditivos, mudança de escopo, alertas, comissões | ⏳ | |

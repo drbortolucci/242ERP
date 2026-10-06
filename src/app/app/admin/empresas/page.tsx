@@ -1,8 +1,8 @@
 import { PageHeader, Card, StatusBadge, Notice } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
 import { ActionButton } from "@/components/ui/form";
+import { pagePerm } from "@/server/page-guard";
 import { requireCtx } from "@/server/auth/next";
-import { requirePerm } from "@/server/context";
 import { listCompanies } from "@/modules/companies/service";
 import { getUsage } from "@/modules/saas/limits";
 import { formatDocument } from "@/lib/documents";
@@ -13,7 +13,7 @@ export const metadata = { title: "Empresas" };
 
 export default async function CompaniesPage() {
   const ctx = await requireCtx();
-  requirePerm(ctx, "company.manage");
+  pagePerm(ctx, "company.manage");
   const [companies, usage] = await Promise.all([listCompanies(ctx), getUsage(ctx.orgId)]);
   const parents = companies.filter((c) => c.kind === "HEADQUARTERS").map((c) => ({ value: c.id, label: c.legalName }));
   return (

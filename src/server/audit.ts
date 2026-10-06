@@ -28,8 +28,8 @@ export interface AuditInput {
 
 type AuditWriter = { auditLog: { create: (args: { data: Record<string, unknown> }) => Promise<unknown> } };
 
-/** Registra auditoria. Passe `tx` para gravar na mesma transação da operação. */
-export async function audit(ctx: Pick<Ctx, "orgId" | "userId" | "userName" | "correlationId" | "support">, input: AuditInput, tx?: AuditWriter) {
+/** Registra auditoria. Passe `tx` (cliente transacional) para gravar na mesma transação da operação. */
+export async function audit(ctx: Pick<Ctx, "orgId" | "userId" | "userName" | "correlationId" | "support">, input: AuditInput, tx?: unknown) {
   const data = {
     organizationId: ctx.orgId,
     companyId: input.companyId ?? null,

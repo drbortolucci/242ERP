@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PageHeader, Card } from "@/components/ui/page";
+import { pagePerm } from "@/server/page-guard";
 import { requireCtx } from "@/server/auth/next";
-import { requirePerm } from "@/server/context";
 import { CONFIG_ENTITIES } from "@/modules/config/registry";
 import { CONFIG_GROUPS } from "@/modules/config/service";
 
@@ -24,7 +24,7 @@ const SPECIAL = [
 
 export default async function ConfigIndex() {
   const ctx = await requireCtx();
-  requirePerm(ctx, "settings.manage");
+  pagePerm(ctx, "settings.manage");
   const groups = [...new Set([...SPECIAL.map((s) => s.group), ...CONFIG_GROUPS])];
   return (
     <>

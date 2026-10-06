@@ -66,6 +66,10 @@ export async function buildCtx(userId: string, orgId: string, opts: BuildCtxOpti
   }
 
   const companyIds = opts.support || !membership || membership.allCompanies ? null : membership.companyIds;
+  // Módulos efetivos = contratados no plano ∩ habilitados pela organização
+  const modSetting = await prisma.orgSetting.findUnique({ where: { organizationId_key: { organizationId: orgId, key: "modules" } } });
+  const enabled = (modSetting?.value as { enabled?: string[] } | null)?.enabled;
+  const planModules = enabled ? org.plan.modules.filter((m) => enabled.includes(m) || m === "api") : org.plan.modules;
   // Organização suspensa/cancelada: dados preservados, acesso somente leitura
   const readOnly = !!opts.support || org.status === "SUSPENDED" || org.status === "CANCELED";
 
@@ -78,7 +82,7 @@ export async function buildCtx(userId: string, orgId: string, opts: BuildCtxOpti
     orgStatus: org.status,
     timezone: org.timezone,
     currency: org.currency,
-    planModules: org.plan.modules,
+    planModules,
     membershipId: membership?.id ?? "support",
     kind: (membership?.kind as "INTERNAL" | "CLIENT") ?? "INTERNAL",
     permissions,

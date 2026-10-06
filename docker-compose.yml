@@ -26,7 +26,7 @@ services:
     volumes: ["storage:/data/storage"]
   worker:
     build: .
-    command: ["node", "worker.js"]
+    command: ["npm", "run", "worker"]
     depends_on:
       db: { condition: service_healthy }
     environment:
