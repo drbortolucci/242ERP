@@ -3,7 +3,7 @@ node_modules/
 out/
 dist/
 coverage/
-storage/
+/storage/
 playwright-report/
 test-results/
 *.log
@@ -16,4 +16,4 @@ next-env.d.ts
 .idea/
 .vscode/*
 !.vscode/extensions.json
-storage-test/
+/storage-test/

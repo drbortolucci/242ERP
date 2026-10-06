@@ -1,0 +1,65 @@
+{
+  "name": "242erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ERP SaaS para consultorias de serviços",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx src/server/jobs/worker.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "bash scripts/reset-dev.sh",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:generate": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "@node-rs/argon2": "^2.2.2",
+    "@prisma/client": "^6.19.3",
+    "clsx": "^2.1.1",
+    "decimal.js": "^10.6.0",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^1.52.0",
+    "next": "^15.5.27",
+    "pdf-lib": "^1.17.1",
+    "react": "19.2",
+    "react-dom": "19.2",
+    "react-hook-form": "^7.89.0",
+    "server-only": "^0.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@next/eslint-plugin-next": "^16.4.0",
+    "@playwright/test": "1.56",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "^3.2.7",
+    "autoprefixer": "^10.6.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "postcss": "^8.5.29",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.15",
+    "typescript": "5.9",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^3.2.7"
+  }
+}

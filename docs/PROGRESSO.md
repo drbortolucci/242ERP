@@ -20,5 +20,17 @@ Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada et
 
 Nenhuma dessas dependências bloqueia a implementação do núcleo.
 
+## Etapa 1 — Fundação SaaS (concluída)
+- Entregue: ver CHANGELOG 0.1.0. Testes: 36 unitários/integração + 3 E2E.
+- Restrições: provedor de pagamento simulado; e-mail simulado (caixa de saída); MFA por TOTP (sem SMS); SSO pendente.
+- Próximo: Etapa 2 — CRM, propostas, contratos e visão 360° do cliente.
+
+## Como continuar
+1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).
+2. `npm run db:reset` (recria banco *_dev local e carrega a demonstração).
+3. `npm run dev` e entre com `admin@demo.local` / senha exibida no seed.
+4. `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e`.
+
 ## Histórico
 - 2026-10-06 — Repositório criado; arquitetura, premissas, backlog e matriz registrados; início da Etapa 1.
+- 2026-10-06 — Etapa 1 concluída (fundação SaaS) — PR `etapa-1-fundacao`.
