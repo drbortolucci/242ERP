@@ -47,3 +47,36 @@ Tarifa aplicável a um apontamento: tarifa vigente na data, mais específica (pr
 
 ## 4. Comissões
 Base por regra: contratação (valor do contrato na ativação), faturamento (valor do documento emitido) ou recebimento (principal liquidado). Valor = base × %. Cancelamento/estorno/baixa por inadimplência geram lançamento de reversão (nunca exclusão). Regra com parceiro só se aplica quando a oportunidade tem esse parceiro.
+
+## 5. Capacidade e alocação (`src/domain/capacity.ts`)
+- Capacidade(dia) = horas do calendário do profissional no dia da semana × capacidade% ; zero em feriados e ausências.
+- Alocação em %: horas(dia) = capacidade(dia) × %. Em horas/dia: valor em cada dia útil do calendário. Em total de horas: distribuído proporcionalmente à capacidade.
+- **Percentuais nunca são somados entre calendários diferentes**: tudo é convertido em horas antes de comparar.
+- Sobrealocação: Σ horas alocadas no dia > capacidade × (1 + tolerância%). Confirmar com conflito exige `resource.override` + justificativa (auditada).
+- Grade: capacidade, alocado (confirmado + provisório), apontado, faturável. **Utilização faturável** = horas faturáveis apontadas ÷ capacidade.
+
+## 6. Projetos (`src/domain/project-metrics.ts`, `src/modules/projects/analytics.ts`)
+| Indicador | Fórmula |
+|-----------|---------|
+| Avanço — horas | horas aprovadas ÷ esforço da linha de base vigente (máx. 100%) |
+| Avanço — marcos | Σ valor dos marcos aceitos ÷ Σ valor dos marcos |
+| Avanço — peso | Σ peso das atividades concluídas ÷ Σ pesos |
+| Avanço — manual | informado; **não habilita EVM** |
+| Custo realizado (AC) | Σ custo snapshot das horas aprovadas + NF de fornecedores aprovadas do projeto + despesas aprovadas |
+| Comprometido não realizado | Σ (valor do pedido de compra aprovado − NF aprovadas desse pedido) |
+| BAC | custo total da linha de base vigente |
+| PV | Σ custo planejado mensal da linha de base até o mês corrente |
+| EV | BAC × avanço% |
+| SPI / CPI | EV ÷ PV / EV ÷ AC — exibidos **somente** com linha de base distribuída, PV > 0 e critério objetivo |
+| ETC | estimativa registrada (pessoal + terceiros **ainda não contratados** + despesas); sem estimativa: horas restantes × custo médio realizado |
+| EAC custo | AC + comprometido não realizado + ETC (compromissos entram uma única vez) |
+| Receita prevista | receita reconhecida (razão gerencial) + receita remanescente estimada |
+| Margem prevista | receita prevista − EAC custo |
+
+Sinais do portfólio: atraso (término planejado vencido ou atividades vencidas), estouro (EAC > BAC), margem prevista < 15%, entregáveis concluídos sem aceite, execução não faturada.
+
+## 7. Horas
+- Faturamento por hora somente nos modelos T&M, pacote de horas, advisory, treinamento e híbrido; em preço fechado, alocação mensal e AMS as horas são custo/consumo (cobrança via marcos, mensalidade e excedente de franquia).
+- Snapshot na aprovação: custo/hora vigente (`costRate`, `costAmount = horas × custo`) e tarifa contratual vigente (`sellRate`).
+- Hora extra: total do dia > limite configurado. Limite diário, frações de 15 minutos e períodos fechados validados no servidor.
+- Profissionais PJ/parceiros: custo do projeto reconhecido pelas horas aprovadas × custo/hora contratado; a nota do PJ liquida a obrigação (não gera custo em duplicidade).

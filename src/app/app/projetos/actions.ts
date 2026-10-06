@@ -1,0 +1,22 @@
+"use server";
+import { z } from "zod";
+import { makeAction } from "@/server/action";
+import * as P from "@/modules/projects/service";
+import { createResourceRequest, requestSchema } from "@/modules/resources/service";
+import { zOptId } from "@/lib/zod-helpers";
+
+export const createProjectAction = makeAction(P.projectSchema, async (ctx, i) => { const p = await P.createProject(ctx, i); return { redirectTo: `/app/projetos/${p.id}` }; });
+export const updateProjectAction = makeAction(z.object({ id: z.string(), name: z.string().optional(), status: z.string().optional(), managerUserId: zOptId, progressMethod: z.enum(["HOURS", "MILESTONES", "TASK_WEIGHT", "MANUAL"]).optional(), manualProgressPct: z.string().optional(), description: z.string().optional() }), async (ctx, i) => { await P.updateProject(ctx, i.id, i as never); return { revalidate: [`/app/projetos/${i.id}`], message: "Projeto atualizado." }; });
+export const saveTaskAction = makeAction(P.taskSchema.extend({ id: z.string().optional() }), async (ctx, i) => { await P.saveTask(ctx, i.id || null, i); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Atividade salva." }; });
+export const taskStatusAction = makeAction(z.object({ id: z.string(), status: z.enum(["TODO", "IN_PROGRESS", "BLOCKED", "DONE"]), back: z.string() }), async (ctx, i) => { await P.setTaskStatus(ctx, i.id, i.status); return { revalidate: [i.back] }; });
+export const dependencyAction = makeAction(z.object({ predecessorId: z.string(), successorId: z.string(), back: z.string() }), async (ctx, i) => { await P.addDependency(ctx, i.predecessorId, i.successorId); return { revalidate: [i.back], message: "Dependência criada." }; });
+export const deliverableAction = makeAction(z.object({ taskId: z.string(), accept: z.enum(["1", "0"]), byName: z.string().min(2), comment: z.string().optional(), back: z.string() }), async (ctx, i) => { await P.decideDeliverable(ctx, i.taskId, i.accept === "1", i.byName, i.comment); return { revalidate: [i.back], message: "Aceite registrado." }; });
+export const memberAction = makeAction(z.object({ projectId: z.string(), professionalId: z.string(), teamRoleId: zOptId, responsibility: z.string().optional() }), async (ctx, i) => { await P.addMember(ctx, i.projectId, i.professionalId, i.teamRoleId, i.responsibility); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Membro incluído." }; });
+export const logAction = makeAction(P.logSchema, async (ctx, i) => { await P.addLog(ctx, i); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Registro incluído." }; });
+export const logStatusAction = makeAction(z.object({ id: z.string(), status: z.enum(["OPEN", "MITIGATING", "CLOSED"]), back: z.string() }), async (ctx, i) => { await P.setLogStatus(ctx, i.id, i.status); return { revalidate: [i.back] }; });
+export const statusReportAction = makeAction(P.statusReportSchema, async (ctx, i) => { await P.addStatusReport(ctx, i); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Relatório de status registrado." }; });
+export const baselineAction = makeAction(P.baselineSchema, async (ctx, i) => { await P.reviseBaseline(ctx, i); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Nova linha de base registrada." }; });
+export const estimateAction = makeAction(P.estimateSchema, async (ctx, i) => { await P.addEstimate(ctx, i); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Estimativa para concluir registrada." }; });
+export const closeOperationalAction = makeAction(z.object({ id: z.string(), reason: z.string().optional() }), async (ctx, i) => { await P.closeOperational(ctx, i.id, i.reason); return { revalidate: [`/app/projetos/${i.id}`], message: "Encerramento operacional registrado." }; });
+export const closeFinancialAction = makeAction(z.object({ id: z.string() }), async (ctx, i) => { await P.closeFinancial(ctx, i.id); return { revalidate: [`/app/projetos/${i.id}`], message: "Encerramento financeiro registrado." }; });
+export const resourceRequestAction = makeAction(requestSchema, async (ctx, i) => { await createResourceRequest(ctx, i); return { revalidate: [`/app/projetos/${i.projectId}`], message: "Solicitação de recurso registrada." }; });

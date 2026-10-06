@@ -21,3 +21,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Propostas versionadas com precificação (receita, custos, MC, markup), alçadas de aprovação com SoD, imutabilidade da versão aprovada, PDF, registro de aceite.
 - Pedidos de venda (carteira), contratos com snapshot de itens/tarifas, reajuste com vigência, marcos, OCs do cliente, mudanças de escopo e aditivos aprovados, saldos (contratado/executado/faturado/recebido/disponível), alertas, renovação/upsell, comissões.
 - Visão 360° do cliente.
+
+## [0.3.0] — Etapa 3: Operação
+### Adicionado
+- Projetos vinculados a contrato com linha de base versionada (distribuição mensal), WBS gerada por modelos (implementação, diagnóstico, rollout, integração, treinamento, advisory, alocação, AMS), dependências, kanban, Gantt, riscos/problemas/decisões/pendências, relatórios de status, aceites de entregáveis, ETC e previsão ao término, EVM condicional, encerramentos operacional e financeiro separados; portfólio com sinais de risco.
+- Recursos: solicitações, sugestões por competência/disponibilidade, alocação por %/horas por dia/total de horas convertida em horas pelo calendário, conflitos e exceções autorizadas, grade semanal/mensal de capacidade x alocado x apontado x faturável.
+- Horas: fluxo rascunho→enviado→aprovado (interno)→cliente→elegível, rejeição com motivo, limites, duplicidade, hora extra, períodos fechados, snapshots de custo/tarifa, ajustes rastreáveis.
+- Despesas: custo x devido ao profissional x cobrável, comprovante obrigatório, alçadas, conta a pagar de reembolso, adiantamentos e prestação de contas.
+- Minha área (portal do consultor).
