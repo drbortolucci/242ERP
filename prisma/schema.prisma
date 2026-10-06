@@ -1,0 +1,2374 @@
+// =============================================================================
+// 242ERP — Modelo de dados
+// Convenções:
+//  * Toda tabela empresarial possui organizationId (isolamento de tenant).
+//  * Tabelas com companyId respeitam o escopo de empresa do usuário.
+//  * Valores monetários: Decimal(18,2). Quantidades/horas: Decimal(12,2).
+//    Tarifas/custos unitários: Decimal(18,4). Percentuais: Decimal(9,4).
+//  * Datas civis (vencimento, competência, data do apontamento): @db.Date.
+//    Instantes (criação, aprovação, SLA): timestamptz (UTC).
+//  * Lançamentos efetivados não são apagados: estorno via registro inverso.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Plataforma SaaS
+// ----------------------------------------------------------------------------
+
+enum OrgStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+model Plan {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  description  String?
+  priceMonthly Decimal  @db.Decimal(18, 2)
+  currency     String   @default("BRL")
+  maxUsers     Int
+  maxCompanies Int
+  maxStorageMb Int
+  modules      String[]
+  features     String[]
+  trialDays    Int      @default(14)
+  rank         Int      @default(0)
+  isPublic     Boolean  @default(true)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  organizations Organization[]
+  subscriptions Subscription[]
+}
+
+model Organization {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  status           OrgStatus @default(TRIAL)
+  planId           String
+  plan             Plan      @relation(fields: [planId], references: [id])
+  trialEndsAt      DateTime? @db.Timestamptz(3)
+  timezone         String    @default("America/Sao_Paulo")
+  currency         String    @default("BRL")
+  locale           String    @default("pt-BR")
+  storageUsedBytes BigInt    @default(0)
+  suspendedAt      DateTime? @db.Timestamptz(3)
+  canceledAt       DateTime? @db.Timestamptz(3)
+  retentionUntil   DateTime? @db.Timestamptz(3)
+  onboardingDone   Boolean   @default(false)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+
+  memberships  Membership[]
+  subscription Subscription?
+  planChanges  PlanChange[]
+
+  @@index([status])
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  organizationId         String             @unique
+  organization           Organization       @relation(fields: [organizationId], references: [id])
+  planId                 String
+  plan                   Plan               @relation(fields: [planId], references: [id])
+  status                 SubscriptionStatus @default(TRIALING)
+  provider               String             @default("simulated")
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  currentPeriodStart     DateTime?          @db.Timestamptz(3)
+  currentPeriodEnd       DateTime?          @db.Timestamptz(3)
+  pastDueSince           DateTime?          @db.Timestamptz(3)
+  cancelAtPeriodEnd      Boolean            @default(false)
+  pendingPlanId          String?
+  createdAt              DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime           @updatedAt @db.Timestamptz(3)
+
+  invoices SaasInvoice[]
+}
+
+// Faturamento da assinatura SaaS (separado do faturamento de serviços das consultorias)
+model SaasInvoice {
+  id                String       @id @default(cuid())
+  subscriptionId    String
+  subscription      Subscription @relation(fields: [subscriptionId], references: [id])
+  organizationId    String
+  providerInvoiceId String?      @unique
+  amount            Decimal      @db.Decimal(18, 2)
+  currency          String       @default("BRL")
+  periodStart       DateTime     @db.Timestamptz(3)
+  periodEnd         DateTime     @db.Timestamptz(3)
+  status            String // OPEN | PAID | FAILED | VOID
+  paidAt            DateTime?    @db.Timestamptz(3)
+  failureReason     String?
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId])
+}
+
+model PlanChange {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  fromPlanId     String?
+  toPlanId       String
+  kind           String // UPGRADE | DOWNGRADE | INITIAL | CANCEL | REACTIVATE
+  effectiveAt    DateTime     @db.Timestamptz(3)
+  requestedById  String?
+  reason         String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId])
+}
+
+// Idempotência de webhooks (assinatura SaaS, fiscal, bancos)
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String
+  payload     Json
+  receivedAt  DateTime  @default(now()) @db.Timestamptz(3)
+  processedAt DateTime? @db.Timestamptz(3)
+  error       String?
+
+  @@unique([provider, eventId])
+}
+
+// ----------------------------------------------------------------------------
+// Identidade, sessões e acesso
+// ----------------------------------------------------------------------------
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  passwordHash    String
+  isPlatformAdmin Boolean   @default(false)
+  mfaSecret       String?
+  mfaEnabled      Boolean   @default(false)
+  failedLogins    Int       @default(0)
+  lockedUntil     DateTime? @db.Timestamptz(3)
+  lastLoginAt     DateTime? @db.Timestamptz(3)
+  active          Boolean   @default(true)
+  preferences     Json      @default("{}")
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  memberships Membership[]
+  sessions    Session[]
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  tokenHash      String   @unique
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String?
+  mfaPending     Boolean  @default(false)
+  supportGrantId String?
+  ip             String?
+  userAgent      String?
+  expiresAt      DateTime @db.Timestamptz(3)
+  lastSeenAt     DateTime @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(3)
+  usedAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+enum MembershipKind {
+  INTERNAL
+  CLIENT
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  kind           MembershipKind @default(INTERNAL)
+  // Para usuários de portal do cliente: parte (cliente) autorizada
+  partyId        String?
+  // Profissional vinculado ao usuário (portal do consultor/apontamentos)
+  professionalId String?
+  allCompanies   Boolean        @default(true)
+  companyIds     String[]
+  roleIds        String[]
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Role {
+  id             String   @id @default(cuid())
+  organizationId String
+  key            String
+  name           String
+  description    String?
+  permissions    String[]
+  isSystem       Boolean  @default(false)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, key])
+}
+
+model Invitation {
+  id             String         @id @default(cuid())
+  organizationId String
+  email          String
+  roleIds        String[]
+  kind           MembershipKind @default(INTERNAL)
+  partyId        String?
+  allCompanies   Boolean        @default(true)
+  companyIds     String[]
+  tokenHash      String         @unique
+  invitedById    String
+  expiresAt      DateTime       @db.Timestamptz(3)
+  acceptedAt     DateTime?      @db.Timestamptz(3)
+  revokedAt      DateTime?      @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId])
+}
+
+// Acesso de suporte da plataforma: autorizado pela organização, temporário e auditado
+model SupportAccessGrant {
+  id             String    @id @default(cuid())
+  organizationId String
+  platformUserId String
+  grantedById    String
+  reason         String
+  expiresAt      DateTime  @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  companyId      String?
+  userId         String?
+  actorLabel     String?
+  action         String
+  entity         String
+  entityId       String?
+  changes        Json?
+  reason         String?
+  correlationId  String?
+  ip             String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entity, entityId])
+}
+
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime @db.Timestamptz(3)
+}
+
+// Fila simples de tarefas em segundo plano (FOR UPDATE SKIP LOCKED)
+model Job {
+  id             String    @id @default(cuid())
+  organizationId String?
+  type           String
+  payload        Json
+  status         String    @default("PENDING") // PENDING | RUNNING | DONE | FAILED
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(5)
+  runAt          DateTime  @default(now()) @db.Timestamptz(3)
+  lockedAt       DateTime? @db.Timestamptz(3)
+  lastError      String?
+  result         Json?
+  uniqueKey      String?   @unique
+  createdById    String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  finishedAt     DateTime? @db.Timestamptz(3)
+
+  @@index([status, runAt])
+}
+
+model Notification {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  title          String
+  body           String?
+  link           String?
+  readAt         DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, userId, readAt])
+}
+
+// Caixa de saída de mensagens: em desenvolvimento o provedor é simulado (nada é enviado)
+model OutboundMessage {
+  id             String    @id @default(cuid())
+  organizationId String?
+  channel        String // EMAIL | TEAMS | ...
+  to             String
+  subject        String
+  body           String
+  provider       String
+  status         String    @default("QUEUED") // QUEUED | SENT | SIMULATED | FAILED
+  error          String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  sentAt         DateTime? @db.Timestamptz(3)
+}
+
+model Attachment {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String?
+  entity         String
+  entityId       String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  sha256         String
+  storageKey     String
+  visibility     String   @default("INTERNAL") // INTERNAL | CLIENT | RESTRICTED
+  uploadedById   String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, entity, entityId])
+}
+
+model SavedFilter {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  screen         String
+  name           String
+  query          String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, userId, screen])
+}
+
+model Favorite {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  label          String
+  href           String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, userId, href])
+}
+
+// ----------------------------------------------------------------------------
+// Estrutura organizacional e configuração
+// ----------------------------------------------------------------------------
+
+model Company {
+  id                    String   @id @default(cuid())
+  organizationId        String
+  kind                  String   @default("HEADQUARTERS") // HEADQUARTERS | BRANCH
+  parentId              String?
+  legalName             String
+  tradeName             String?
+  cnpj                  String
+  stateRegistration     String?
+  municipalRegistration String?
+  taxRegime             String? // informado pelo usuário (ex.: Simples Nacional, Lucro Presumido)
+  email                 String?
+  phone                 String?
+  address               Json     @default("{}")
+  municipalityCode      String?
+  currency              String   @default("BRL")
+  timezone              String   @default("America/Sao_Paulo")
+  logoAttachmentId      String?
+  responsibleName       String?
+  responsibleEmail      String?
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, cnpj])
+}
+
+model BusinessUnit {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  code           String
+  name           String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, code])
+}
+
+model CostCenter {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String?
+  code           String
+  name           String
+  kind           String   @default("OPERATIONAL") // OPERATIONAL | ADMINISTRATIVE | COMMERCIAL
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, code])
+}
+
+model BankAccount {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  name           String
+  bankCode       String?
+  agency         String?
+  accountNumber  String?
+  openingBalance Decimal  @db.Decimal(18, 2)
+  openingDate    DateTime @db.Date
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model OnboardingState {
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  step           Int       @default(1)
+  data           Json      @default("{}")
+  completedAt    DateTime? @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model DocumentSequence {
+  id             String @id @default(cuid())
+  organizationId String
+  companyId      String @default("")
+  docType        String
+  prefix         String
+  nextNumber     Int    @default(1)
+  padding        Int    @default(5)
+
+  @@unique([organizationId, companyId, docType])
+}
+
+model OrgSetting {
+  id             String   @id @default(cuid())
+  organizationId String
+  key            String
+  value          Json
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, key])
+}
+
+model WorkCalendar {
+  id                  String    @id @default(cuid())
+  organizationId      String
+  name                String
+  // Horas por dia da semana [dom, seg, ter, qua, qui, sex, sab]
+  weeklyHours         Decimal[] @db.Decimal(5, 2)
+  timezone            String    @default("America/Sao_Paulo")
+  // Janela de atendimento (para SLA), minutos desde 00:00
+  businessStartMinute Int       @default(540)
+  businessEndMinute   Int       @default(1080)
+  active              Boolean   @default(true)
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model Holiday {
+  id             String   @id @default(cuid())
+  organizationId String
+  calendarId     String
+  date           DateTime @db.Date
+  name           String
+
+  @@unique([calendarId, date])
+}
+
+model Service {
+  id               String   @id @default(cuid())
+  organizationId   String
+  code             String
+  name             String
+  category         String // IMPLEMENTATION | CONSULTING | ALLOCATION | AMS | ADVISORY | TRAINING | OTHER
+  description      String?
+  defaultModel     String?
+  revenueAccountId String?
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, code])
+}
+
+model PipelineStage {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  order          Int
+  probability    Int // %
+  kind           String  @default("OPEN") // OPEN | WON | LOST
+  active         Boolean @default(true)
+}
+
+model LossReason {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  active         Boolean @default(true)
+}
+
+model ProjectType {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  templateKey    String? // ERP_IMPLEMENTATION | DIAGNOSTIC | ROLLOUT | INTEGRATION | TRAINING | ADVISORY | ALLOCATION | AMS
+  active         Boolean @default(true)
+}
+
+model TeamRole {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  active         Boolean @default(true)
+}
+
+model SeniorityLevel {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+  order          Int
+}
+
+model Skill {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  category       String?
+  active         Boolean @default(true)
+
+  @@unique([organizationId, name])
+}
+
+// Tabela comercial com vigência
+model PriceTable {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  validFrom      DateTime  @db.Date
+  validTo        DateTime? @db.Date
+  currency       String    @default("BRL")
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model PriceTableItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  priceTableId   String
+  teamRoleId     String?
+  seniorityId    String?
+  serviceId      String?
+  hourlyRate     Decimal  @db.Decimal(18, 4)
+  // Custo padrão de referência para precificação (o custo real vem do profissional)
+  referenceCost  Decimal? @db.Decimal(18, 4)
+}
+
+model ExpenseCategory {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  name                String
+  accountId           String?
+  reimbursableDefault Boolean  @default(true)
+  billableDefault     Boolean  @default(false)
+  maxAmount           Decimal? @db.Decimal(18, 2)
+  active              Boolean  @default(true)
+}
+
+enum AccountType {
+  REVENUE
+  DEDUCTION
+  DIRECT_COST
+  OPERATING_EXPENSE
+  FINANCIAL
+  OTHER
+}
+
+// Plano de contas gerencial
+model ManagerialAccount {
+  id             String      @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  type           AccountType
+  parentId       String?
+  systemKey      String? // conta usada pelas integrações internas (ex.: LABOR_COST)
+  active         Boolean     @default(true)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, systemKey])
+}
+
+model PaymentTerm {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  // [{ days: 30, percent: "50.00" }, ...] — soma deve ser 100
+  installments   Json
+  active         Boolean @default(true)
+}
+
+model PaymentMethod {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  active         Boolean @default(true)
+}
+
+// Alçadas de aprovação
+model ApprovalRule {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  companyId          String?
+  docType            String // PROPOSAL | PURCHASE_ORDER | REQUISITION | EXPENSE | PAYABLE | MEASUREMENT | ALLOCATION_EXCEPTION | CONTRACT_AMENDMENT
+  name               String
+  minAmount          Decimal? @db.Decimal(18, 2)
+  maxDiscountPct     Decimal? @db.Decimal(9, 4) // exige aprovação se desconto > valor
+  minMarginPct       Decimal? @db.Decimal(9, 4) // exige aprovação se margem < valor
+  requiredPermission String
+  level              Int      @default(1)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model ApprovalRequest {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  companyId          String?
+  entity             String
+  entityId           String
+  ruleId             String?
+  level              Int       @default(1)
+  requiredPermission String
+  reasons            String[]
+  status             String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
+  requestedById      String
+  decidedById        String?
+  decidedAt          DateTime? @db.Timestamptz(3)
+  comment            String?
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, status])
+  @@index([organizationId, entity, entityId])
+}
+
+model SlaPolicy {
+  id               String   @id @default(cuid())
+  organizationId   String
+  name             String
+  calendarId       String?
+  // Status que pausam o SLA
+  pauseStatuses    String[]
+  reopenWindowDays Int      @default(7)
+  autoCloseDays    Int      @default(5)
+  active           Boolean  @default(true)
+}
+
+model SlaTarget {
+  id                String @id @default(cuid())
+  organizationId    String
+  policyId          String
+  priority          String // P1 | P2 | P3 | P4
+  responseMinutes   Int
+  resolutionMinutes Int
+  escalateAfterPct  Int    @default(80)
+
+  @@unique([policyId, priority])
+}
+
+model DocumentTemplate {
+  id             String  @id @default(cuid())
+  organizationId String
+  type           String // PROPOSAL | CONTRACT | BILLING_DOCUMENT | STATUS_REPORT
+  name           String
+  header         String?
+  footer         String?
+  body           String?
+  active         Boolean @default(true)
+}
+
+model CustomFieldDef {
+  id             String   @id @default(cuid())
+  organizationId String
+  entity         String // PARTY | PROJECT | CONTRACT | OPPORTUNITY | TICKET
+  key            String
+  label          String
+  type           String // TEXT | NUMBER | DATE | BOOLEAN | SELECT
+  options        String[]
+  required       Boolean  @default(false)
+  active         Boolean  @default(true)
+
+  @@unique([organizationId, entity, key])
+}
+
+// Parâmetros fiscais informados e validados pelo responsável fiscal, com vigência.
+// O sistema NÃO define alíquotas ou códigos por conta própria.
+model FiscalServiceCode {
+  id               String    @id @default(cuid())
+  organizationId   String
+  companyId        String
+  serviceId        String
+  municipalityCode String
+  serviceCode      String
+  description      String?
+  issRatePct       Decimal?  @db.Decimal(9, 4)
+  validFrom        DateTime  @db.Date
+  validTo          DateTime? @db.Date
+  validatedBy      String?
+  validatedAt      DateTime? @db.Timestamptz(3)
+}
+
+model WithholdingRule {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String?
+  code           String // ex.: IRRF, PIS, COFINS, CSLL, INSS, ISS — conforme responsável fiscal
+  name           String
+  ratePct        Decimal   @db.Decimal(9, 4)
+  minBaseAmount  Decimal?  @db.Decimal(18, 2)
+  validFrom      DateTime  @db.Date
+  validTo        DateTime? @db.Date
+  validatedBy    String?
+  active         Boolean   @default(true)
+}
+
+model IntegrationConfig {
+  id             String   @id @default(cuid())
+  organizationId String
+  kind           String // EMAIL | CALENDAR | TEAMS | ESIGN | NFSE | BANK | ACCOUNTING | TICKETING | API
+  provider       String
+  environment    String   @default("SANDBOX") // SANDBOX | PRODUCTION
+  enabled        Boolean  @default(false)
+  // Referência ao segredo (nome da variável/cofre). Nunca o segredo em si.
+  secretRef      String?
+  settings       Json     @default("{}")
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, kind])
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  prefix         String
+  keyHash        String    @unique
+  scopes         String[]
+  createdById    String
+  lastUsedAt     DateTime? @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+// ----------------------------------------------------------------------------
+// Cadastros básicos
+// ----------------------------------------------------------------------------
+
+// Parte: pessoa física ou jurídica que pode ser cliente, prospect, fornecedor e/ou parceiro.
+model Party {
+  id             String   @id @default(cuid())
+  organizationId String
+  personType     String   @default("COMPANY") // COMPANY | PERSON
+  name           String
+  tradeName      String?
+  document       String? // CNPJ/CPF somente dígitos
+  email          String?
+  phone          String?
+  website        String?
+  address        Json     @default("{}")
+  isCustomer     Boolean  @default(false)
+  isProspect     Boolean  @default(false)
+  isSupplier     Boolean  @default(false)
+  isPartner      Boolean  @default(false)
+  segment        String?
+  ownerUserId    String?
+  paymentTermId  String?
+  customFields   Json     @default("{}")
+  notes          String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, document])
+  @@index([organizationId, name])
+}
+
+model Contact {
+  id             String   @id @default(cuid())
+  organizationId String
+  partyId        String
+  name           String
+  email          String?
+  phone          String?
+  jobTitle       String?
+  roles          String[] // DECISOR | SPONSOR | APROVADOR_HORAS | FINANCEIRO | USUARIO_CHAVE | TECNICO
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, partyId])
+}
+
+model SupplierComplianceDoc {
+  id             String    @id @default(cuid())
+  organizationId String
+  partyId        String
+  docType        String
+  validUntil     DateTime? @db.Date
+  attachmentId   String?
+  notes          String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model Professional {
+  id              String   @id @default(cuid())
+  organizationId  String
+  companyId       String
+  userId          String?
+  name            String
+  email           String?
+  employmentType  String // CLT | PJ | PARTNER | OTHER
+  supplierPartyId String? // para PJ/parceiro: fornecedor que fatura
+  teamRoleId      String?
+  seniorityId     String?
+  managerId       String?
+  calendarId      String?
+  costCenterId    String?
+  businessUnitId  String?
+  // Percentual da capacidade do calendário (ex.: 100 = integral, 50 = meio período)
+  capacityPct     Decimal  @default(100) @db.Decimal(9, 4)
+  certifications  String[]
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, email])
+}
+
+model ProfessionalSkill {
+  id             String @id @default(cuid())
+  organizationId String
+  professionalId String
+  skillId        String
+  level          Int    @default(3)
+
+  @@unique([professionalId, skillId])
+}
+
+// Custo/hora com vigência — acesso restrito (permissão cost.view)
+model CostRate {
+  id             String    @id @default(cuid())
+  organizationId String
+  professionalId String
+  hourlyCost     Decimal   @db.Decimal(18, 4)
+  validFrom      DateTime  @db.Date
+  validTo        DateTime? @db.Date
+  createdById    String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([professionalId, validFrom])
+}
+
+model Absence {
+  id             String   @id @default(cuid())
+  organizationId String
+  professionalId String
+  type           String // VACATION | SICK | LEAVE | TRAINING | OTHER
+  startDate      DateTime @db.Date
+  endDate        DateTime @db.Date
+  notes          String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// ----------------------------------------------------------------------------
+// CRM
+// ----------------------------------------------------------------------------
+
+model Lead {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  name                   String
+  companyName            String?
+  email                  String?
+  phone                  String?
+  source                 String?
+  status                 String   @default("NEW") // NEW | QUALIFIED | DISQUALIFIED | CONVERTED
+  ownerUserId            String?
+  serviceInterest        String?
+  notes                  String?
+  convertedPartyId       String?
+  convertedOpportunityId String?
+  createdAt              DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model Opportunity {
+  id                String    @id @default(cuid())
+  organizationId    String
+  companyId         String
+  number            String
+  partyId           String
+  title             String
+  stageId           String
+  status            String    @default("OPEN") // OPEN | WON | LOST
+  ownerUserId       String?
+  source            String?
+  estimatedValue    Decimal   @db.Decimal(18, 2)
+  probability       Int
+  expectedCloseDate DateTime? @db.Date
+  competitors       String[]
+  lossReasonId      String?
+  lossNotes         String?
+  nextAction        String?
+  nextActionDate    DateTime? @db.Date
+  lastActivityAt    DateTime? @db.Timestamptz(3)
+  wonAt             DateTime? @db.Timestamptz(3)
+  lostAt            DateTime? @db.Timestamptz(3)
+  partnerPartyId    String?
+  kind              String    @default("NEW") // NEW | RENEWAL | UPSELL | CROSS_SELL
+  customFields      Json      @default("{}")
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+}
+
+model OpportunityItem {
+  id              String  @id @default(cuid())
+  organizationId  String
+  opportunityId   String
+  serviceId       String
+  commercialModel String
+  estimatedValue  Decimal @db.Decimal(18, 2)
+}
+
+model Activity {
+  id             String    @id @default(cuid())
+  organizationId String
+  type           String // CALL | MEETING | TASK | EMAIL | NOTE | DECISION
+  subject        String
+  notes          String?
+  dueAt          DateTime? @db.Timestamptz(3)
+  doneAt         DateTime? @db.Timestamptz(3)
+  ownerUserId    String?
+  partyId        String?
+  opportunityId  String?
+  leadId         String?
+  projectId      String?
+  createdById    String
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, partyId])
+  @@index([organizationId, opportunityId])
+}
+
+// ----------------------------------------------------------------------------
+// Propostas
+// ----------------------------------------------------------------------------
+
+model Proposal {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  number         String
+  partyId        String
+  opportunityId  String?
+  title          String
+  status         String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | SENT | ACCEPTED | REJECTED | EXPIRED | CANCELED
+  currentVersion Int      @default(1)
+  ownerUserId    String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+}
+
+model ProposalVersion {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  proposalId         String
+  version            Int
+  status             String    @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | SUPERSEDED | ACCEPTED
+  commercialModel    String // FIXED_PRICE | TIME_MATERIAL | MONTHLY_ALLOCATION | HOUR_PACKAGE | AMS_RECURRING | ADVISORY | TRAINING | HYBRID
+  scope              String?
+  deliverables       String?
+  assumptions        String?
+  exclusions         String?
+  schedule           String?
+  startDate          DateTime? @db.Date
+  endDate            DateTime? @db.Date
+  months             Int       @default(1)
+  validUntil         DateTime? @db.Date
+  paymentTermId      String?
+  discountPct        Decimal   @default(0) @db.Decimal(9, 4)
+  taxRatePct         Decimal   @default(0) @db.Decimal(9, 4)
+  // Totais calculados (snapshot preservado quando aprovado)
+  grossRevenue       Decimal   @default(0) @db.Decimal(18, 2)
+  discountAmount     Decimal   @default(0) @db.Decimal(18, 2)
+  netRevenue         Decimal   @default(0) @db.Decimal(18, 2)
+  taxAmount          Decimal   @default(0) @db.Decimal(18, 2)
+  laborCost          Decimal   @default(0) @db.Decimal(18, 2)
+  thirdPartyCost     Decimal   @default(0) @db.Decimal(18, 2)
+  expenseCost        Decimal   @default(0) @db.Decimal(18, 2)
+  totalCost          Decimal   @default(0) @db.Decimal(18, 2)
+  contributionMargin Decimal   @default(0) @db.Decimal(18, 2)
+  marginPct          Decimal   @default(0) @db.Decimal(9, 4)
+  markup             Decimal   @default(0) @db.Decimal(9, 4)
+  totalHours         Decimal   @default(0) @db.Decimal(12, 2)
+  approvedById       String?
+  approvedAt         DateTime? @db.Timestamptz(3)
+  acceptedAt         DateTime? @db.Timestamptz(3)
+  acceptanceNote     String?
+  acceptedByName     String?
+  createdById        String
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([proposalId, version])
+}
+
+model ProposalLine {
+  id             String  @id @default(cuid())
+  organizationId String
+  versionId      String
+  kind           String // LABOR | FIXED | RECURRING | EXPENSE | THIRD_PARTY | LICENSE
+  description    String
+  serviceId      String?
+  teamRoleId     String?
+  seniorityId    String?
+  hours          Decimal @default(0) @db.Decimal(12, 2)
+  quantity       Decimal @default(1) @db.Decimal(12, 2)
+  unitPrice      Decimal @default(0) @db.Decimal(18, 4)
+  unitCost       Decimal @default(0) @db.Decimal(18, 4)
+  revenue        Decimal @default(0) @db.Decimal(18, 2)
+  cost           Decimal @default(0) @db.Decimal(18, 2)
+  billable       Boolean @default(true)
+  sortOrder      Int     @default(0)
+}
+
+// ----------------------------------------------------------------------------
+// Vendas e contratos
+// ----------------------------------------------------------------------------
+
+model SalesOrder {
+  id                String   @id @default(cuid())
+  organizationId    String
+  companyId         String
+  number            String
+  partyId           String
+  proposalId        String?
+  proposalVersionId String?
+  opportunityId     String?
+  status            String   @default("OPEN") // OPEN | CONTRACTED | CANCELED
+  totalAmount       Decimal  @db.Decimal(18, 2)
+  customerPo        String?
+  orderDate         DateTime @db.Date
+  notes             String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, proposalVersionId])
+}
+
+model Contract {
+  id                                String    @id @default(cuid())
+  organizationId                    String
+  companyId                         String
+  number                            String
+  version                           Int       @default(1)
+  partyId                           String
+  salesOrderId                      String?
+  opportunityId                     String?
+  proposalVersionId                 String?
+  title                             String
+  commercialModel                   String
+  status                            String    @default("DRAFT") // DRAFT | ACTIVE | SUSPENDED | ENDED | CANCELED
+  startDate                         DateTime  @db.Date
+  endDate                           DateTime? @db.Date
+  totalValue                        Decimal   @db.Decimal(18, 2)
+  hoursLimit                        Decimal?  @db.Decimal(12, 2)
+  currency                          String    @default("BRL")
+  paymentTermId                     String?
+  billingDay                        Int       @default(1)
+  billingFrequency                  String    @default("MONTHLY") // MONTHLY | MILESTONE | ON_DEMAND
+  requiresClientTimesheetApproval   Boolean   @default(false)
+  requiresClientMeasurementApproval Boolean   @default(false)
+  requiresPo                        Boolean   @default(false)
+  overagePolicy                     String    @default("REQUIRE_APPROVAL") // BLOCK | BILL | REQUIRE_APPROVAL
+  revenueMethod                     String    @default("TIME_MATERIAL") // TIME_MATERIAL | PERCENT_COMPLETE_HOURS | MILESTONE | STRAIGHT_LINE | ON_MEASUREMENT
+  adjustmentIndex                   String?
+  adjustmentMonth                   Int?
+  // AMS
+  slaPolicyId                       String?
+  monthlyFee                        Decimal?  @db.Decimal(18, 2)
+  franchiseHours                    Decimal?  @db.Decimal(12, 2)
+  overageRate                       Decimal?  @db.Decimal(18, 4)
+  hourBankPolicy                    String? // NONE | ACCUMULATE | PREPAID
+  hourBankExpiryMonths              Int?
+  lowBalancePct                     Int       @default(20)
+  taxRatePct                        Decimal   @default(0) @db.Decimal(9, 4)
+  ownerUserId                       String?
+  businessUnitId                    String?
+  costCenterId                      String?
+  autoRenew                         Boolean   @default(false)
+  renewalNoticeDays                 Int       @default(60)
+  signedAt                          DateTime? @db.Date
+  signatureEvidence                 String?
+  createdAt                         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt                         DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@index([organizationId, partyId])
+}
+
+model ContractItem {
+  id             String  @id @default(cuid())
+  organizationId String
+  contractId     String
+  serviceId      String?
+  description    String
+  kind           String // LABOR | FIXED | RECURRING | EXPENSE | LICENSE
+  quantity       Decimal @default(1) @db.Decimal(12, 2)
+  unitPrice      Decimal @default(0) @db.Decimal(18, 4)
+  amount         Decimal @default(0) @db.Decimal(18, 2)
+}
+
+// Tarifas contratadas (snapshot) com vigência — preservam valores históricos
+model ContractRate {
+  id             String    @id @default(cuid())
+  organizationId String
+  contractId     String
+  teamRoleId     String?
+  seniorityId    String?
+  professionalId String?
+  hourlyRate     Decimal   @db.Decimal(18, 4)
+  validFrom      DateTime  @db.Date
+  validTo        DateTime? @db.Date
+  reason         String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model ContractMilestone {
+  id             String    @id @default(cuid())
+  organizationId String
+  contractId     String
+  projectTaskId  String?
+  name           String
+  amount         Decimal   @db.Decimal(18, 2)
+  plannedDate    DateTime? @db.Date
+  status         String    @default("PENDING") // PENDING | READY | ACCEPTED | BILLED | CANCELED
+  acceptedAt     DateTime? @db.Timestamptz(3)
+  acceptedByName String?
+}
+
+model ContractAmendment {
+  id              String    @id @default(cuid())
+  organizationId  String
+  contractId      String
+  number          Int
+  description     String
+  valueDelta      Decimal   @db.Decimal(18, 2)
+  hoursDelta      Decimal   @default(0) @db.Decimal(12, 2)
+  newEndDate      DateTime? @db.Date
+  status          String    @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED
+  changeRequestId String?
+  approvedById    String?
+  approvedAt      DateTime? @db.Timestamptz(3)
+  createdById     String
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([contractId, number])
+}
+
+model ChangeRequest {
+  id               String   @id @default(cuid())
+  organizationId   String
+  contractId       String?
+  projectId        String?
+  title            String
+  description      String?
+  effortHoursDelta Decimal  @default(0) @db.Decimal(12, 2)
+  valueDelta       Decimal  @default(0) @db.Decimal(18, 2)
+  costDelta        Decimal  @default(0) @db.Decimal(18, 2)
+  status           String   @default("OPEN") // OPEN | APPROVED | REJECTED | CONVERTED
+  amendmentId      String?
+  requestedById    String
+  decidedById      String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model CustomerPurchaseOrder {
+  id             String    @id @default(cuid())
+  organizationId String
+  contractId     String
+  number         String
+  amount         Decimal   @db.Decimal(18, 2)
+  validFrom      DateTime? @db.Date
+  validTo        DateTime? @db.Date
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model CommissionRule {
+  id                 String  @id @default(cuid())
+  organizationId     String
+  name               String
+  basis              String // BOOKING | INVOICE | RECEIPT
+  ratePct            Decimal @db.Decimal(9, 4)
+  beneficiaryUserId  String?
+  beneficiaryPartyId String? // parceiro/canal
+  appliesToKind      String? // NEW | RENEWAL | UPSELL | CROSS_SELL | null = todos
+  active             Boolean @default(true)
+}
+
+model CommissionEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  ruleId         String
+  contractId     String?
+  sourceType     String // CONTRACT | BILLING_DOCUMENT | SETTLEMENT
+  sourceId       String
+  baseAmount     Decimal  @db.Decimal(18, 2)
+  amount         Decimal  @db.Decimal(18, 2)
+  status         String   @default("ACCRUED") // ACCRUED | PAYABLE | PAID | REVERSED
+  reversalOfId   String?
+  kind           String   @default("ACCRUAL") // ACCRUAL | REVERSAL
+  competence     DateTime @db.Date
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([ruleId, sourceType, sourceId, kind])
+}
+
+// ----------------------------------------------------------------------------
+// Projetos
+// ----------------------------------------------------------------------------
+
+model Project {
+  id                  String    @id @default(cuid())
+  organizationId      String
+  companyId           String
+  code                String
+  name                String
+  partyId             String
+  contractId          String?
+  projectTypeId       String?
+  managerUserId       String?
+  sponsorContactId    String?
+  businessUnitId      String?
+  costCenterId        String?
+  status              String    @default("PLANNING") // PLANNING | ACTIVE | ON_HOLD | COMPLETED | CANCELED
+  financialStatus     String    @default("OPEN") // OPEN | CLOSED
+  plannedStart        DateTime? @db.Date
+  plannedEnd          DateTime? @db.Date
+  actualStart         DateTime? @db.Date
+  actualEnd           DateTime? @db.Date
+  progressMethod      String    @default("HOURS") // HOURS | MILESTONES | TASK_WEIGHT | MANUAL
+  manualProgressPct   Decimal?  @db.Decimal(9, 4)
+  operationalClosedAt DateTime? @db.Timestamptz(3)
+  financialClosedAt   DateTime? @db.Timestamptz(3)
+  description         String?
+  customFields        Json      @default("{}")
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, code])
+  @@index([organizationId, partyId])
+}
+
+// Linha de base versionada (versão 1 = orçamento original)
+model ProjectBaseline {
+  id             String    @id @default(cuid())
+  organizationId String
+  projectId      String
+  version        Int
+  label          String
+  scope          String?
+  plannedStart   DateTime? @db.Date
+  plannedEnd     DateTime? @db.Date
+  effortHours    Decimal   @db.Decimal(12, 2)
+  revenue        Decimal   @db.Decimal(18, 2)
+  laborCost      Decimal   @db.Decimal(18, 2)
+  thirdPartyCost Decimal   @db.Decimal(18, 2)
+  expenseCost    Decimal   @db.Decimal(18, 2)
+  otherCost      Decimal   @default(0) @db.Decimal(18, 2)
+  reason         String?
+  approvedById   String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, version])
+}
+
+// Distribuição mensal da linha de base
+model BaselineMonth {
+  id             String   @id @default(cuid())
+  organizationId String
+  baselineId     String
+  month          DateTime @db.Date
+  revenue        Decimal  @default(0) @db.Decimal(18, 2)
+  laborCost      Decimal  @default(0) @db.Decimal(18, 2)
+  thirdPartyCost Decimal  @default(0) @db.Decimal(18, 2)
+  expenseCost    Decimal  @default(0) @db.Decimal(18, 2)
+  hours          Decimal  @default(0) @db.Decimal(12, 2)
+
+  @@unique([baselineId, month])
+}
+
+model ProjectTask {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  projectId              String
+  parentId               String?
+  wbsCode                String
+  name                   String
+  kind                   String    @default("TASK") // PHASE | DELIVERABLE | TASK | MILESTONE
+  status                 String    @default("TODO") // TODO | IN_PROGRESS | BLOCKED | DONE
+  plannedStart           DateTime? @db.Date
+  plannedEnd             DateTime? @db.Date
+  actualStart            DateTime? @db.Date
+  actualEnd              DateTime? @db.Date
+  plannedHours           Decimal   @default(0) @db.Decimal(12, 2)
+  weight                 Decimal   @default(1) @db.Decimal(9, 4)
+  assigneeProfessionalId String?
+  requiresAcceptance     Boolean   @default(false)
+  acceptanceStatus       String? // PENDING | ACCEPTED | REJECTED
+  acceptedAt             DateTime? @db.Timestamptz(3)
+  acceptedByName         String?
+  acceptanceComment      String?
+  sortOrder              Int       @default(0)
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([projectId])
+}
+
+model TaskDependency {
+  id             String @id @default(cuid())
+  organizationId String
+  predecessorId  String
+  successorId    String
+  type           String @default("FS")
+
+  @@unique([predecessorId, successorId])
+}
+
+model ProjectMember {
+  id             String  @id @default(cuid())
+  organizationId String
+  projectId      String
+  professionalId String
+  teamRoleId     String?
+  responsibility String?
+
+  @@unique([projectId, professionalId])
+}
+
+model ProjectLog {
+  id             String    @id @default(cuid())
+  organizationId String
+  projectId      String
+  kind           String // RISK | ISSUE | DECISION | PENDING | CHANGE
+  title          String
+  description    String?
+  probability    Int?
+  impact         Int?
+  status         String    @default("OPEN") // OPEN | MITIGATING | CLOSED
+  ownerName      String?
+  dueDate        DateTime? @db.Date
+  clientVisible  Boolean   @default(false)
+  createdById    String
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model StatusReport {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  reportDate     DateTime @db.Date
+  overall        String // GREEN | YELLOW | RED
+  schedule       String
+  budget         String
+  scope          String
+  summary        String
+  nextSteps      String?
+  clientVisible  Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// Estimativa para concluir (ETC), versionada por data
+model ProjectEstimate {
+  id                             String   @id @default(cuid())
+  organizationId                 String
+  projectId                      String
+  asOf                           DateTime @db.Date
+  remainingHours                 Decimal  @db.Decimal(12, 2)
+  remainingLaborCost             Decimal  @db.Decimal(18, 2)
+  // Terceiros a incorrer ALÉM dos compromissos já registrados (evita duplicidade)
+  remainingThirdPartyUncommitted Decimal  @db.Decimal(18, 2)
+  remainingExpenses              Decimal  @db.Decimal(18, 2)
+  remainingRevenue               Decimal  @db.Decimal(18, 2)
+  notes                          String?
+  createdById                    String
+  createdAt                      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// ----------------------------------------------------------------------------
+// Recursos e alocação
+// ----------------------------------------------------------------------------
+
+model ResourceRequest {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  teamRoleId     String?
+  seniorityId    String?
+  skillIds       String[]
+  hours          Decimal  @db.Decimal(12, 2)
+  startDate      DateTime @db.Date
+  endDate        DateTime @db.Date
+  status         String   @default("OPEN") // OPEN | FULFILLED | CANCELED
+  notes          String?
+  requestedById  String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model Allocation {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  professionalId String
+  projectId      String?
+  contractId     String?
+  requestId      String?
+  startDate      DateTime @db.Date
+  endDate        DateTime @db.Date
+  mode           String // PERCENT | HOURS_PER_DAY | TOTAL_HOURS
+  value          Decimal  @db.Decimal(12, 4)
+  // Total de horas convertido pelo calendário do profissional (base de comparação)
+  totalHours     Decimal  @db.Decimal(12, 2)
+  status         String   @default("TENTATIVE") // TENTATIVE | CONFIRMED | CANCELED
+  billable       Boolean  @default(true)
+  overrideReason String?
+  overrideById   String?
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([organizationId, professionalId, startDate])
+}
+
+// ----------------------------------------------------------------------------
+// Horas
+// ----------------------------------------------------------------------------
+
+model TimeEntry {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  companyId            String
+  professionalId       String
+  date                 DateTime  @db.Date
+  hours                Decimal   @db.Decimal(12, 2)
+  description          String
+  activityType         String    @default("WORK") // WORK | MEETING | TRAVEL | TRAINING | SUPPORT | INTERNAL
+  billable             Boolean   @default(true)
+  overtime             Boolean   @default(false)
+  projectId            String?
+  taskId               String?
+  contractId           String?
+  ticketId             String?
+  internalCode         String?
+  // Fluxo operacional
+  status               String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED
+  clientApproval       String    @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
+  // Elegibilidade comercial (separada da aprovação operacional)
+  billingStatus        String    @default("NOT_BILLABLE") // NOT_BILLABLE | BLOCKED | ELIGIBLE | MEASURED | INVOICED
+  rejectionReason      String?
+  submittedAt          DateTime? @db.Timestamptz(3)
+  approvedById         String?
+  approvedAt           DateTime? @db.Timestamptz(3)
+  clientApprovedAt     DateTime? @db.Timestamptz(3)
+  clientApprovedByName String?
+  // Snapshots históricos: custo e tarifa aplicados
+  costRate             Decimal?  @db.Decimal(18, 4)
+  costAmount           Decimal?  @db.Decimal(18, 2)
+  sellRate             Decimal?  @db.Decimal(18, 4)
+  // Ajuste rastreável de horas já faturadas
+  adjustsEntryId       String?
+  adjustmentReason     String?
+  createdById          String
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([organizationId, professionalId, date])
+  @@index([organizationId, projectId])
+  @@index([organizationId, billingStatus])
+}
+
+// ----------------------------------------------------------------------------
+// Despesas
+// ----------------------------------------------------------------------------
+
+model ExpenseAdvance {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  professionalId String
+  projectId      String?
+  amount         Decimal  @db.Decimal(18, 2)
+  settledAmount  Decimal  @default(0) @db.Decimal(18, 2)
+  status         String   @default("REQUESTED") // REQUESTED | APPROVED | PAID | SETTLED | REJECTED
+  purpose        String
+  payableId      String?
+  approvedById   String?
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model Expense {
+  id                         String    @id @default(cuid())
+  organizationId             String
+  companyId                  String
+  professionalId             String?
+  date                       DateTime  @db.Date
+  categoryId                 String
+  description                String
+  amount                     Decimal   @db.Decimal(18, 2)
+  // Quem pagou: COMPANY (cartão/conta da empresa) | PROFESSIONAL (reembolso devido ao profissional)
+  paidBy                     String    @default("PROFESSIONAL")
+  reimbursableToProfessional Decimal   @default(0) @db.Decimal(18, 2)
+  billableToClient           Boolean   @default(false)
+  billableAmount             Decimal   @default(0) @db.Decimal(18, 2)
+  partyId                    String?
+  contractId                 String?
+  projectId                  String?
+  costCenterId               String?
+  advanceId                  String?
+  receiptAttachmentId        String?
+  status                     String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED | CANCELED
+  billingStatus              String    @default("NOT_BILLABLE") // NOT_BILLABLE | ELIGIBLE | MEASURED | INVOICED
+  rejectionReason            String?
+  approvedById               String?
+  approvedAt                 DateTime? @db.Timestamptz(3)
+  payableId                  String?
+  createdById                String
+  createdAt                  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([organizationId, projectId])
+}
+
+// ----------------------------------------------------------------------------
+// Suprimentos
+// ----------------------------------------------------------------------------
+
+model PurchaseRequisition {
+  id              String    @id @default(cuid())
+  organizationId  String
+  companyId       String
+  number          String
+  requesterId     String
+  costCenterId    String?
+  projectId       String?
+  accountId       String?
+  description     String
+  justification   String?
+  neededBy        DateTime? @db.Date
+  estimatedAmount Decimal   @db.Decimal(18, 2)
+  status          String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED | QUOTING | ORDERED | CANCELED
+  budgetCheck     Json?
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+}
+
+model RequisitionLine {
+  id                 String  @id @default(cuid())
+  organizationId     String
+  requisitionId      String
+  kind               String // SERVICE | PROFESSIONAL | LICENSE | SUBSCRIPTION | EQUIPMENT | MATERIAL
+  description        String
+  quantity           Decimal @db.Decimal(12, 2)
+  unit               String  @default("UN")
+  estimatedUnitPrice Decimal @db.Decimal(18, 4)
+}
+
+model Quotation {
+  id              String    @id @default(cuid())
+  organizationId  String
+  requisitionId   String
+  supplierPartyId String
+  totalAmount     Decimal   @db.Decimal(18, 2)
+  deliveryDays    Int?
+  paymentTerms    String?
+  validUntil      DateTime? @db.Date
+  notes           String?
+  selected        Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model QuotationLine {
+  id                String  @id @default(cuid())
+  organizationId    String
+  quotationId       String
+  requisitionLineId String
+  unitPrice         Decimal @db.Decimal(18, 4)
+  amount            Decimal @db.Decimal(18, 2)
+}
+
+model PurchaseOrder {
+  id              String    @id @default(cuid())
+  organizationId  String
+  companyId       String
+  number          String
+  supplierPartyId String
+  requisitionId   String?
+  quotationId     String?
+  projectId       String?
+  costCenterId    String?
+  accountId       String?
+  kind            String    @default("ONE_OFF") // ONE_OFF | SUBCONTRACT | PJ_PROFESSIONAL | RECURRING | LICENSE
+  status          String    @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | PARTIALLY_RECEIVED | RECEIVED | CLOSED | CANCELED
+  orderDate       DateTime  @db.Date
+  startDate       DateTime? @db.Date
+  endDate         DateTime? @db.Date
+  paymentTermId   String?
+  totalAmount     Decimal   @db.Decimal(18, 2)
+  advanceAmount   Decimal   @default(0) @db.Decimal(18, 2)
+  tolerancePct    Decimal   @default(0) @db.Decimal(9, 4)
+  notes           String?
+  approvedById    String?
+  approvedAt      DateTime? @db.Timestamptz(3)
+  createdById     String
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+}
+
+model PurchaseOrderLine {
+  id              String  @id @default(cuid())
+  organizationId  String
+  purchaseOrderId String
+  kind            String
+  description     String
+  quantity        Decimal @db.Decimal(12, 2)
+  unitPrice       Decimal @db.Decimal(18, 4)
+  amount          Decimal @db.Decimal(18, 2)
+  receivedQty     Decimal @default(0) @db.Decimal(12, 2)
+  receivedAmount  Decimal @default(0) @db.Decimal(18, 2)
+  invoicedAmount  Decimal @default(0) @db.Decimal(18, 2)
+}
+
+// Recebimento de material ou aceite de serviço (medição de terceiro)
+model GoodsReceipt {
+  id              String   @id @default(cuid())
+  organizationId  String
+  companyId       String
+  purchaseOrderId String
+  number          String
+  date            DateTime @db.Date
+  kind            String   @default("SERVICE_ACCEPTANCE") // SERVICE_ACCEPTANCE | GOODS_RECEIPT | RETURN
+  status          String   @default("POSTED") // POSTED | REVERSED
+  notes           String?
+  acceptedById    String
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model GoodsReceiptLine {
+  id             String  @id @default(cuid())
+  organizationId String
+  receiptId      String
+  poLineId       String
+  quantity       Decimal @db.Decimal(12, 2)
+  amount         Decimal @db.Decimal(18, 2)
+}
+
+model SupplierInvoice {
+  id              String   @id @default(cuid())
+  organizationId  String
+  companyId       String
+  supplierPartyId String
+  purchaseOrderId String?
+  number          String
+  issueDate       DateTime @db.Date
+  dueDate         DateTime @db.Date
+  competence      DateTime @db.Date
+  amount          Decimal  @db.Decimal(18, 2)
+  status          String   @default("RECEIVED") // RECEIVED | DIVERGENT | APPROVED | CANCELED
+  matchResult     Json?
+  divergenceNote  String?
+  approvedById    String?
+  attachmentId    String?
+  createdById     String
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, supplierPartyId, number])
+}
+
+model SupplierEvaluation {
+  id              String   @id @default(cuid())
+  organizationId  String
+  partyId         String
+  purchaseOrderId String?
+  quality         Int
+  deadline        Int
+  price           Int
+  communication   Int
+  comment         String?
+  createdById     String
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model Asset {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  companyId              String
+  kind                   String // LICENSE | SUBSCRIPTION | EQUIPMENT | MATERIAL
+  name                   String
+  serialNumber           String?
+  supplierPartyId        String?
+  purchaseOrderId        String?
+  assignedProfessionalId String?
+  projectId              String?
+  quantity               Decimal   @default(1) @db.Decimal(12, 2)
+  cost                   Decimal   @default(0) @db.Decimal(18, 2)
+  acquiredAt             DateTime? @db.Date
+  renewalDate            DateTime? @db.Date
+  status                 String    @default("ACTIVE") // ACTIVE | IN_STOCK | ASSIGNED | RETIRED | EXPIRED
+  notes                  String?
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model AssetMovement {
+  id             String   @id @default(cuid())
+  organizationId String
+  assetId        String
+  kind           String // IN | ASSIGN | RETURN | RETIRE
+  quantity       Decimal  @default(1) @db.Decimal(12, 2)
+  professionalId String?
+  notes          String?
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// ----------------------------------------------------------------------------
+// AMS
+// ----------------------------------------------------------------------------
+
+model Ticket {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  companyId              String
+  number                 String
+  partyId                String
+  contractId             String?
+  serviceId              String?
+  type                   String    @default("INCIDENT") // INCIDENT | REQUEST | PROBLEM | CHANGE
+  system                 String?
+  module                 String?
+  category               String?
+  title                  String
+  description            String
+  impact                 Int       @default(3) // 1 alto .. 3 baixo
+  urgency                Int       @default(3)
+  priority               String // P1..P4
+  status                 String    @default("NEW") // NEW | IN_PROGRESS | WAITING_CUSTOMER | WAITING_THIRD_PARTY | RESOLVED | CLOSED | CANCELED
+  assigneeProfessionalId String?
+  team                   String?
+  openedByUserId         String?
+  openedByContactName    String?
+  openedAt               DateTime  @db.Timestamptz(3)
+  firstResponseAt        DateTime? @db.Timestamptz(3)
+  resolvedAt             DateTime? @db.Timestamptz(3)
+  closedAt               DateTime? @db.Timestamptz(3)
+  responseDueAt          DateTime? @db.Timestamptz(3)
+  resolutionDueAt        DateTime? @db.Timestamptz(3)
+  pausedAt               DateTime? @db.Timestamptz(3)
+  pausedBusinessMinutes  Int       @default(0)
+  responseBreached       Boolean   @default(false)
+  resolutionBreached     Boolean   @default(false)
+  escalationLevel        Int       @default(0)
+  reopenCount            Int       @default(0)
+  problemTicketId        String?
+  csatScore              Int?
+  csatComment            String?
+  slaPolicyId            String?
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@index([organizationId, partyId])
+}
+
+model TicketComment {
+  id             String   @id @default(cuid())
+  organizationId String
+  ticketId       String
+  authorUserId   String?
+  authorName     String
+  visibility     String   @default("PUBLIC") // PUBLIC | INTERNAL
+  body           String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model TicketEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  ticketId       String
+  kind           String // STATUS | ASSIGN | ESCALATION | PRIORITY | REOPEN | SLA_BREACH
+  fromValue      String?
+  toValue        String?
+  byUserId       String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model KnowledgeArticle {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  body           String
+  tags           String[]
+  system         String?
+  clientVisible  Boolean  @default(false)
+  published      Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// Razão de saldo de horas AMS (franquia, banco de horas, pré-pago). Histórico preservado.
+model HourBankEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  contractId     String
+  month          DateTime  @db.Date
+  kind           String // CREDIT | DEBIT | EXPIRE | ADJUST | OVERAGE
+  hours          Decimal   @db.Decimal(12, 2) // positivo = crédito, negativo = débito
+  creditEntryId  String? // débito/expiração consome este crédito (ordem FIFO)
+  expiresOn      DateTime? @db.Date
+  sourceType     String? // TIME_ENTRY | MONTHLY_FRANCHISE | PREPAID_PURCHASE | MANUAL | EXPIRY_RUN
+  sourceId       String?
+  notes          String?
+  createdById    String?
+  // Chave de idempotência (ex.: "TIME_ENTRY:<id>:<creditId>")
+  dedupeKey      String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, dedupeKey])
+  @@index([contractId, month])
+}
+
+// ----------------------------------------------------------------------------
+// Medição e faturamento
+// ----------------------------------------------------------------------------
+
+model Measurement {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  companyId            String
+  number               String
+  partyId              String
+  contractId           String
+  periodStart          DateTime  @db.Date
+  periodEnd            DateTime  @db.Date
+  competence           DateTime  @db.Date
+  status               String    @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | CLIENT_PENDING | CLIENT_APPROVED | PARTIALLY_INVOICED | INVOICED | CANCELED
+  totalAmount          Decimal   @default(0) @db.Decimal(18, 2)
+  customerPoId         String?
+  notes                String?
+  approvedById         String?
+  approvedAt           DateTime? @db.Timestamptz(3)
+  clientApprovedAt     DateTime? @db.Timestamptz(3)
+  clientApprovedByName String?
+  createdById          String
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+}
+
+model MeasurementItem {
+  id                String   @id @default(cuid())
+  organizationId    String
+  measurementId     String
+  sourceType        String // TIME_ENTRY | MILESTONE | RECURRING_FEE | ALLOCATION | AMS_FEE | AMS_OVERAGE | PREPAID_PACKAGE | EXPENSE | SERVICE | ADJUSTMENT
+  sourceId          String?
+  description       String
+  quantity          Decimal  @db.Decimal(12, 2)
+  unitPrice         Decimal  @db.Decimal(18, 4)
+  amount            Decimal  @db.Decimal(18, 2)
+  serviceId         String?
+  billingDocumentId String?
+  status            String   @default("ACTIVE") // ACTIVE | INVOICED | REMOVED
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// Trava de faturamento: garante (por unicidade) que uma origem só é medida uma vez
+model BillingLock {
+  id                String   @id @default(cuid())
+  organizationId    String
+  sourceType        String
+  sourceKey         String // ex.: id do apontamento, "contrato:2026-09" para mensalidade
+  measurementItemId String   @unique
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, sourceType, sourceKey])
+}
+
+// Documento comercial de cobrança (NÃO é nota fiscal)
+model BillingDocument {
+  id                String    @id @default(cuid())
+  organizationId    String
+  companyId         String
+  number            String
+  partyId           String
+  contractId        String
+  measurementId     String
+  customerPo        String?
+  issueDate         DateTime  @db.Date
+  competence        DateTime  @db.Date
+  grossAmount       Decimal   @db.Decimal(18, 2)
+  discountAmount    Decimal   @default(0) @db.Decimal(18, 2)
+  withholdingAmount Decimal   @default(0) @db.Decimal(18, 2)
+  withholdings      Json      @default("[]")
+  netAmount         Decimal   @db.Decimal(18, 2)
+  advanceApplied    Decimal   @default(0) @db.Decimal(18, 2)
+  status            String    @default("ISSUED") // ISSUED | CANCELED
+  fiscalStatus      String    @default("NOT_REQUESTED") // NOT_REQUESTED | PENDING | AUTHORIZED | REJECTED | CANCELED
+  idempotencyKey    String
+  paymentTermId     String?
+  cancelReason      String?
+  canceledAt        DateTime? @db.Timestamptz(3)
+  createdById       String
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, idempotencyKey])
+}
+
+// Documento fiscal (NFS-e) — controlado pelo provedor fiscal
+model FiscalDocument {
+  id                String    @id @default(cuid())
+  organizationId    String
+  companyId         String
+  billingDocumentId String
+  provider          String
+  environment       String // SANDBOX | PRODUCTION | SIMULATED
+  idempotencyKey    String
+  externalId        String?
+  status            String    @default("PENDING") // PENDING | PROCESSING | AUTHORIZED | REJECTED | CANCELED | ERROR
+  number            String?
+  verificationCode  String?
+  attempts          Int       @default(0)
+  lastError         String?
+  requestPayload    Json?
+  responsePayload   Json?
+  authorizedAt      DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, idempotencyKey])
+}
+
+// ----------------------------------------------------------------------------
+// Financeiro
+// ----------------------------------------------------------------------------
+
+model Receivable {
+  id                String   @id @default(cuid())
+  organizationId    String
+  companyId         String
+  number            String
+  partyId           String
+  billingDocumentId String?
+  contractId        String?
+  projectId         String?
+  installment       Int      @default(1)
+  installments      Int      @default(1)
+  issueDate         DateTime @db.Date
+  dueDate           DateTime @db.Date
+  competence        DateTime @db.Date
+  amount            Decimal  @db.Decimal(18, 2)
+  // Saldo = amount - principal liquidado - créditos aplicados - compensações (calculado e mantido em transação)
+  openAmount        Decimal  @db.Decimal(18, 2)
+  status            String   @default("OPEN") // OPEN | PARTIAL | PAID | CANCELED | WRITTEN_OFF
+  description       String?
+  accountId         String?
+  collectionNotes   String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status, dueDate])
+}
+
+model Payable {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String
+  number         String
+  partyId        String?
+  professionalId String?
+  sourceType     String // SUPPLIER_INVOICE | EXPENSE_REIMBURSEMENT | EXPENSE_ADVANCE | RECURRING | SUPPLIER_ADVANCE | MANUAL | PAYROLL
+  sourceId       String?
+  projectId      String?
+  costCenterId   String?
+  accountId      String?
+  issueDate      DateTime  @db.Date
+  dueDate        DateTime  @db.Date
+  competence     DateTime  @db.Date
+  amount         Decimal   @db.Decimal(18, 2)
+  openAmount     Decimal   @db.Decimal(18, 2)
+  status         String    @default("PENDING_APPROVAL") // PENDING_APPROVAL | OPEN | PARTIAL | PAID | CANCELED
+  description    String?
+  approvedById   String?
+  approvedAt     DateTime? @db.Timestamptz(3)
+  createdById    String
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, sourceType, sourceId])
+  @@index([organizationId, status, dueDate])
+}
+
+// Liquidação (recebimento/pagamento). Imutável; correção por estorno.
+model Settlement {
+  id                String   @id @default(cuid())
+  organizationId    String
+  companyId         String
+  direction         String // IN | OUT
+  receivableId      String?
+  payableId         String?
+  date              DateTime @db.Date
+  principal         Decimal  @db.Decimal(18, 2)
+  interest          Decimal  @default(0) @db.Decimal(18, 2)
+  fine              Decimal  @default(0) @db.Decimal(18, 2)
+  discount          Decimal  @default(0) @db.Decimal(18, 2)
+  total             Decimal  @db.Decimal(18, 2)
+  bankAccountId     String
+  bankTransactionId String?
+  status            String   @default("POSTED") // POSTED | REVERSED
+  reversalOfId      String?
+  reversalReason    String?
+  idempotencyKey    String
+  createdById       String
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, idempotencyKey])
+}
+
+// Adiantamentos/créditos de clientes (IN) e adiantamentos a fornecedores (OUT)
+model Advance {
+  id                String   @id @default(cuid())
+  organizationId    String
+  companyId         String
+  direction         String // CUSTOMER | SUPPLIER
+  partyId           String
+  contractId        String?
+  purchaseOrderId   String?
+  amount            Decimal  @db.Decimal(18, 2)
+  appliedAmount     Decimal  @default(0) @db.Decimal(18, 2)
+  date              DateTime @db.Date
+  bankAccountId     String?
+  bankTransactionId String?
+  status            String   @default("OPEN") // OPEN | APPLIED | REVERSED
+  description       String?
+  createdById       String
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model AdvanceApplication {
+  id             String   @id @default(cuid())
+  organizationId String
+  advanceId      String
+  receivableId   String?
+  payableId      String?
+  amount         Decimal  @db.Decimal(18, 2)
+  status         String   @default("POSTED") // POSTED | REVERSED
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// Compensação explícita entre saldo de cliente (a receber) e fornecedor (a pagar) da mesma parte
+model Offset {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  partyId        String
+  receivableId   String
+  payableId      String
+  amount         Decimal  @db.Decimal(18, 2)
+  reason         String
+  approvedById   String
+  status         String   @default("POSTED") // POSTED | REVERSED
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// Movimento bancário registrado pelo ERP (livro). Saldo da conta = saldo inicial + soma dos movimentos.
+model BankTransaction {
+  id              String    @id @default(cuid())
+  organizationId  String
+  companyId       String
+  bankAccountId   String
+  date            DateTime  @db.Date
+  amount          Decimal   @db.Decimal(18, 2) // positivo = entrada, negativo = saída
+  description     String
+  kind            String // SETTLEMENT | TRANSFER | ADVANCE | FEE | MANUAL | REVERSAL
+  transferId      String?
+  reversalOfId    String?
+  statementLineId String?   @unique
+  reconciledAt    DateTime? @db.Timestamptz(3)
+  createdById     String
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, bankAccountId, date])
+}
+
+model Transfer {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  fromAccountId  String
+  toAccountId    String
+  date           DateTime @db.Date
+  amount         Decimal  @db.Decimal(18, 2)
+  description    String?
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model StatementImport {
+  id             String   @id @default(cuid())
+  organizationId String
+  bankAccountId  String
+  fileName       String
+  lines          Int
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// Linha de extrato bancário importada (fonte externa). Não altera saldo do livro.
+model BankStatementLine {
+  id             String   @id @default(cuid())
+  organizationId String
+  bankAccountId  String
+  importId       String?
+  externalId     String
+  date           DateTime @db.Date
+  amount         Decimal  @db.Decimal(18, 2)
+  description    String
+  status         String   @default("PENDING") // PENDING | RECONCILED | IGNORED
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([bankAccountId, externalId])
+}
+
+model RecurringPayable {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  companyId          String
+  partyId            String?
+  description        String
+  amount             Decimal   @db.Decimal(18, 2)
+  dayOfMonth         Int
+  accountId          String?
+  costCenterId       String?
+  projectId          String?
+  startDate          DateTime  @db.Date
+  endDate            DateTime? @db.Date
+  lastGeneratedMonth DateTime? @db.Date
+  active             Boolean   @default(true)
+}
+
+// ----------------------------------------------------------------------------
+// Controladoria
+// ----------------------------------------------------------------------------
+
+model AccountingPeriod {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String
+  month          DateTime  @db.Date
+  status         String    @default("OPEN") // OPEN | CLOSED
+  closedById     String?
+  closedAt       DateTime? @db.Timestamptz(3)
+  reopenedById   String?
+  reopenedAt     DateTime? @db.Timestamptz(3)
+  reopenReason   String?
+
+  @@unique([organizationId, companyId, month])
+}
+
+// Razão gerencial. Toda linha identifica origem e regra; sem exclusão após fechamento.
+model ManagerialEntry {
+  id              String   @id @default(cuid())
+  organizationId  String
+  companyId       String
+  competence      DateTime @db.Date
+  accountId       String
+  // Valor no sentido natural da conta (receita positiva = receita; custo positivo = custo)
+  amount          Decimal  @db.Decimal(18, 2)
+  costCenterId    String?
+  businessUnitId  String?
+  partyId         String?
+  contractId      String?
+  projectId       String?
+  serviceId       String?
+  professionalId  String?
+  supplierPartyId String?
+  sourceType      String // REVENUE_RECOGNITION | TIME_COST | LABOR_ABSORPTION | SUPPLIER_INVOICE | EXPENSE | PAYROLL_IMPORT | ALLOCATION | MANUAL_ADJUSTMENT | REVERSAL | DEDUCTION
+  sourceId        String?
+  ruleRef         String? // regra aplicada (ex.: allocationRuleId@versão, método de reconhecimento)
+  description     String?
+  reversalOfId    String?
+  // Chave de idempotência da postagem (evita lançamento duplicado da mesma origem)
+  dedupeKey       String?
+  createdById     String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, competence])
+  @@index([organizationId, projectId])
+  @@index([organizationId, sourceType, sourceId])
+}
+
+model Budget {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  year           Int
+  kind           String   @default("BUDGET") // BUDGET | FORECAST
+  version        Int      @default(1)
+  name           String
+  status         String   @default("DRAFT") // DRAFT | APPROVED | SUPERSEDED
+  basedOnId      String?
+  approvedById   String?
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, companyId, year, kind, version])
+}
+
+model BudgetLine {
+  id             String   @id @default(cuid())
+  organizationId String
+  budgetId       String
+  accountId      String
+  costCenterId   String?
+  projectId      String?
+  month          DateTime @db.Date
+  amount         Decimal  @db.Decimal(18, 2)
+}
+
+model AllocationRule {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  companyId          String
+  name               String
+  version            Int       @default(1)
+  sourceAccountId    String
+  sourceCostCenterId String?
+  basis              String // FIXED_PERCENT | HOURS | REVENUE
+  // Para FIXED_PERCENT: [{ projectId?, costCenterId?, percent }]
+  targets            Json
+  targetAccountId    String
+  validFrom          DateTime  @db.Date
+  validTo            DateTime? @db.Date
+  active             Boolean   @default(true)
+  createdById        String
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model AllocationRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  ruleId         String
+  ruleVersion    Int
+  competence     DateTime @db.Date
+  sourceAmount   Decimal  @db.Decimal(18, 2)
+  status         String   @default("POSTED") // POSTED | REVERSED
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model PayrollImport {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  competence     DateTime @db.Date
+  fileName       String?
+  totalAmount    Decimal  @db.Decimal(18, 2)
+  status         String   @default("POSTED") // POSTED | REVERSED
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model PayrollImportLine {
+  id             String  @id @default(cuid())
+  organizationId String
+  importId       String
+  costCenterId   String?
+  professionalId String?
+  description    String
+  amount         Decimal @db.Decimal(18, 2)
+}
+
+// Exportação de dados do cliente (LGPD/portabilidade/encerramento)
+model DataExport {
+  id             String    @id @default(cuid())
+  organizationId String
+  requestedById  String
+  status         String    @default("PENDING") // PENDING | READY | FAILED
+  storageKey     String?
+  sizeBytes      Int?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  readyAt        DateTime? @db.Timestamptz(3)
+}
