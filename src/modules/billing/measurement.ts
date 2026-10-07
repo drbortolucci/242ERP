@@ -204,3 +204,15 @@ export async function cancelMeasurement(ctx: Ctx, id: string, reason: string) {
 }
 
 export { setSourceStatus };
+
+/** Recusa do cliente: medição volta ao rascunho para correção (itens permanecem travados), com motivo auditado. */
+export async function clientRejectMeasurement(ctx: Ctx, id: string, byName: string, reason: string) {
+  if (ctx.kind === "CLIENT") requirePerm(ctx, "portal.approve");
+  else requirePerm(ctx, "billing.approve");
+  if (!reason.trim()) throw validation("Informe o motivo da recusa.");
+  const m = await ctx.db.measurement.findFirst({ where: { id, ...(ctx.kind === "CLIENT" ? { partyId: ctx.partyId ?? "__none__" } : {}) } });
+  if (!m || m.status !== "CLIENT_PENDING") throw rule("Medição não aguarda aprovação do cliente.");
+  await ctx.db.measurement.update({ where: { id }, data: { status: "DRAFT", notes: `${m.notes ? `${m.notes}\n` : ""}Recusada por ${byName}: ${reason}` } });
+  await audit(ctx, { action: "measurement.client_rejected", entity: "Measurement", entityId: id, reason, changes: { byName } });
+  await notify(ctx.orgId, await usersWithPermission(ctx.orgId, "billing.measure"), { title: `Medição ${m.number} recusada pelo cliente`, body: reason, link: `/app/faturamento/medicoes/${id}` });
+}

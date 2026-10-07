@@ -29,14 +29,14 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC21 | Validar rateios sem duplicar custos | Soma após rateio = soma antes | 7 | ✅ | `controlling.test.ts` (percentual e horas, resto exato, execução única, estorno, versão) |
 | AC22 | Fechar período e impedir alterações indevidas | Operações na competência fechada são recusadas | 7 | ✅ | `controlling.test.ts` (razão e títulos recusados no período fechado) |
 | AC23 | Reabrir período com autorização e auditoria | Exige permissão + justificativa; auditado | 7 | ✅ | `controlling.test.ts` (sem permissão/justificativa recusa; auditoria registrada) |
-| AC24 | Restringir portal ao cliente autorizado | Cliente vê só seus dados, sem custos/comentários internos | 8 | ⏳ | |
+| AC24 | Restringir portal ao cliente autorizado | Cliente vê só seus dados, sem custos/comentários internos | 8 | ✅ | `tests/integration/portal.test.ts`; E2E `09-portal.spec.ts` (aprovação de horas, chamado sem notas internas, telas internas redirecionam) |
 | AC25 | Impedir acesso entre organizações | Cliente Prisma escopado | 1 | ✅ | `tenant-isolation.test.ts`; exportação isolada em `foundation.test.ts` |
 | AC26 | Respeitar escopos de empresa | Usuário com escopo não lê/grava outra empresa | 1 | ✅ | `tenant-isolation.test.ts` (escopo de empresa leitura/escrita) |
 | AC27 | Estornar operação sem perder histórico | Estorno cria registro inverso vinculado | 6 | ✅ | `billing-finance.test.ts` (liquidação e movimento bancário inversos vinculados; comissão revertida) |
 | AC28 | Preservar documentos ao alterar tarifas e configurações | Snapshots/vigência | 2/3 | ✅ | Snapshot de tarifas do contrato e proposta aprovada imutável (`commercial.test.ts`); custo/hora com vigência (`foundation.test.ts`) |
 | AC29 | Impedir duplicidades em operações concorrentes | Medição/cobrança/liquidação simultâneas | 6 | ✅ | Medições simultâneas (`billing-finance.test.ts`), chaves de idempotência de emissão e liquidação, bloqueio de títulos (`FOR UPDATE`), apuração AMS concorrente (`ams.test.ts`) |
-| AC30 | Executar CI no GitHub | Workflow verde | 1 | 🟡 | Workflow `.github/workflows/ci.yml` (aguardando primeira execução no PR) |
-| AC31 | Demonstrar ciclo completo com dados fictícios | Seed gera dados por meio dos serviços (não números fixos) | 8 | ⏳ | |
+| AC30 | Executar CI no GitHub | Workflow verde | 1 | ✅ | Workflow `verify` verde nos PRs (lint, tipos, testes, migrações, seed, build, E2E) |
+| AC31 | Demonstrar ciclo completo com dados fictícios | Seed gera dados por meio dos serviços (não números fixos) | 8 | ✅ | `prisma/seed-*.ts`: CRM → proposta → contrato → projeto/AMS → recursos → horas → medição → cobrança → recebimento → razão/DRE; compras → aceite → NF → pagamento → apropriação; 2 empresas + organização isolada |
 
 ## Requisitos por módulo
 
@@ -65,5 +65,5 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | Financeiro | CR/CP, liquidações, estornos, adiantamentos, compensações, aging | ✅ | Inclui contas recorrentes e comissões por faturamento/recebimento |
 | Tesouraria | Contas, transferências, extratos, conciliação, fluxo de caixa | ✅ | Importação CSV/OFX; 🔌 integração bancária automática (API/CNAB) pendente |
 | Controladoria | Razão, orçamento, rateio, DRE, P&L, fechamento | ✅ | Razão idempotente (job diário), folha, rateios versionados, orçamento/forecast, DRE com filtros e navegação até a origem, P&L de projetos, fechamento/reabertura, exportação contábil CSV, aprovação das regras de reconhecimento. Não substitui a contabilidade oficial |
-| Portais | Cliente e consultor | ⏳ | |
-| Dashboards | Por perfil, rastreáveis | ⏳ | |
+| Portais | Cliente e consultor | ✅ | Portal do cliente (`/portal`): chamados, aprovações de horas/medições/entregáveis, projetos (status, riscos/decisões visíveis), financeiro (documentos, títulos, PDF), base de conhecimento. Consultor: `/app/minha-area` |
+| Dashboards | Por perfil, rastreáveis | ✅ | `/app`: blocos por permissão (resultado, caixa, faturamento, comercial, projetos, AMS, suprimentos, fechamento, minha semana, aprovações), cada indicador com link para a origem |

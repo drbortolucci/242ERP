@@ -67,3 +67,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - P&L de projetos: original × revisado × realizado × previsto.
 - Fechamento com checklist de pendências, bloqueio de operações e reabertura autorizada e auditada; exportação contábil (CSV); registro de aprovação das regras de reconhecimento.
 
+## [0.8.0] — Etapa 8: Portais e dashboards
+### Adicionado
+- Portal do cliente (`/portal`) com camada de leitura restrita à parte autorizada: início, chamados (abertura, conversa pública, confirmação/reabertura, avaliação), aprovações de horas, medições (aprovar/recusar) e entregáveis, projetos (status, riscos/decisões marcados como visíveis), financeiro (documentos de cobrança, títulos, NFS-e, PDF), base de conhecimento.
+- Recusa de medição pelo cliente com motivo (volta ao rascunho para correção).
+- PDF do documento de cobrança acessível ao cliente apenas para a própria parte.
+- Painel inicial por perfil com indicadores rastreáveis até a tela de origem.
+

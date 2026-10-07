@@ -9,8 +9,10 @@ import { audit } from "@/server/audit";
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await getCtx();
   if (!ctx) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-  if (!ctx.permissions.has("billing.read")) return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-  const d = await ctx.db.billingDocument.findFirst({ where: { id: (await params).id } });
+  const client = ctx.kind === "CLIENT";
+  if (client ? !ctx.permissions.has("portal.access") || !ctx.partyId : !ctx.permissions.has("billing.read")) return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  // cliente só acessa documentos da própria parte
+  const d = await ctx.db.billingDocument.findFirst({ where: { id: (await params).id, ...(client ? { partyId: ctx.partyId!, status: "ISSUED" } : {}) } });
   if (!d) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
   const [company, party, items, recs] = await Promise.all([ctx.db.company.findFirst({ where: { id: d.companyId } }), ctx.db.party.findFirst({ where: { id: d.partyId } }), ctx.db.measurementItem.findMany({ where: { billingDocumentId: d.id } }), ctx.db.receivable.findMany({ where: { billingDocumentId: d.id }, orderBy: { installment: "asc" } })]);
   const pdf = await PdfBuilder.create(`${company?.legalName ?? ""} — Documento de cobrança ${d.number} — DOCUMENTO INTERNO, NÃO É NOTA FISCAL.`);
