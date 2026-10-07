@@ -3,8 +3,38 @@ import { requirePerm, requireWritable, type Ctx } from "@/server/context";
 import { audit, diff } from "@/server/audit";
 import { createInvitation } from "../auth/service";
 import { assertUserLimit } from "../saas/limits";
-import { conflict, notFound, rule, validation } from "@/lib/errors";
+import { conflict, forbidden, notFound, rule, validation } from "@/lib/errors";
 import { isPermission } from "@/lib/permissions";
+
+/**
+ * Permissões sensíveis (administração, custos/margens, alçadas de aprovação, estornos, períodos e controladoria):
+ * só podem ser concedidas por quem já as possui. As operacionais podem ser concedidas por quem administra usuários,
+ * sempre dentro do próprio alcance de empresas (ver assertScopeWithin).
+ */
+const SENSITIVE = /^(org\.|users\.|settings\.|company\.|audit\.|data\.|support\.|cost\.|margin\.|commission\.|controlling\.|period\.|treasury\.)|\.(approve|approve_high|cancel|reverse|override|write_any)$/;
+
+function assertCanGrant(ctx: Ctx, perms: string[]) {
+  const missing = perms.filter((p) => SENSITIVE.test(p) && !ctx.permissions.has(p));
+  if (missing.length) throw forbidden(`Você não pode conceder permissões que não possui: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? "…" : ""}.`);
+}
+
+/** Administrador restrito a empresas só concede acesso dentro das próprias empresas. */
+function assertScopeWithin(ctx: Ctx, allCompanies: boolean, companyIds: string[]) {
+  if (ctx.companyIds === null) return;
+  if (allCompanies || companyIds.length === 0 || companyIds.some((c) => !ctx.companyIds!.includes(c))) throw forbidden("Você só pode conceder acesso às empresas em que atua.");
+}
+
+async function rolePerms(ctx: Ctx, roleIds: string[]) {
+  const roles = await ctx.db.role.findMany({ where: { id: { in: roleIds } } });
+  return { roles, perms: [...new Set(roles.flatMap((r) => r.permissions))] };
+}
+
+/** Não é possível gerenciar usuários com mais poderes (permissões ou empresas) do que quem administra. */
+async function assertCanManageMember(ctx: Ctx, m: { userId: string; roleIds: string[]; allCompanies: boolean; companyIds: string[] }) {
+  if (m.userId === ctx.userId) throw forbidden("Você não pode alterar o próprio acesso.");
+  assertCanGrant(ctx, (await rolePerms(ctx, m.roleIds)).perms);
+  assertScopeWithin(ctx, m.allCompanies, m.companyIds);
+}
 
 export async function listMembers(ctx: Ctx) {
   requirePerm(ctx, "users.manage");
@@ -17,6 +47,8 @@ export async function listMembers(ctx: Ctx) {
 export async function invite(ctx: Ctx, i: { email: string; roleIds: string[]; kind: "INTERNAL" | "CLIENT"; partyId?: string; allCompanies: boolean; companyIds: string[] }) {
   requirePerm(ctx, "users.manage");
   requireWritable(ctx);
+  assertCanGrant(ctx, (await rolePerms(ctx, i.roleIds)).perms);
+  assertScopeWithin(ctx, i.allCompanies, i.companyIds);
   if (i.kind === "CLIENT") {
     if (!i.partyId || !(await ctx.db.party.findFirst({ where: { id: i.partyId, OR: [{ isCustomer: true }, { isProspect: true }] } }))) throw validation("Selecione o cliente do portal.");
     const roles = await ctx.db.role.findMany({ where: { id: { in: i.roleIds } } });
@@ -30,6 +62,7 @@ export async function invite(ctx: Ctx, i: { email: string; roleIds: string[]; ki
 
 export async function revokeInvitation(ctx: Ctx, id: string) {
   requirePerm(ctx, "users.manage");
+  requireWritable(ctx);
   const inv = await ctx.db.invitation.findFirst({ where: { id } });
   if (!inv) throw notFound("Convite");
   await ctx.db.invitation.update({ where: { id }, data: { revokedAt: new Date() } });
@@ -47,8 +80,12 @@ export async function updateMembership(ctx: Ctx, id: string, i: { roleIds: strin
   requireWritable(ctx);
   const m = await ctx.db.membership.findFirst({ where: { id } });
   if (!m) throw notFound("Usuário");
+  await assertCanManageMember(ctx, m);
   const roles = await ctx.db.role.findMany({ where: { id: { in: i.roleIds } } });
   if (roles.length !== i.roleIds.length || !roles.length) throw validation("Selecione ao menos um perfil válido.");
+  assertCanGrant(ctx, [...new Set(roles.flatMap((r) => r.permissions))]);
+  assertScopeWithin(ctx, i.allCompanies, i.companyIds);
+  for (const c of i.companyIds) if (!(await ctx.db.company.findFirst({ where: { id: c } }))) throw validation("Empresa inválida.");
   const adminRole = await ctx.db.role.findFirst({ where: { key: "org_admin" } });
   if (adminRole && m.roleIds.includes(adminRole.id) && !i.roleIds.includes(adminRole.id) && (await orgAdminCount(ctx, id)) === 0) throw rule("A organização precisa de ao menos um administrador.");
   if (m.kind === "CLIENT" && roles.some((r) => r.permissions.some((p) => !p.startsWith("portal.")))) throw validation("Usuários do portal só podem receber perfis de portal.");
@@ -64,6 +101,7 @@ export async function setMembershipActive(ctx: Ctx, id: string, active: boolean)
   const m = await ctx.db.membership.findFirst({ where: { id } });
   if (!m) throw notFound("Usuário");
   if (m.userId === ctx.userId && !active) throw rule("Você não pode desativar o próprio acesso.");
+  await assertCanManageMember(ctx, m);
   if (!active && (await orgAdminCount(ctx, id)) === 0) {
     const adminRole = await ctx.db.role.findFirst({ where: { key: "org_admin" } });
     if (adminRole && m.roleIds.includes(adminRole.id)) throw rule("A organização precisa de ao menos um administrador ativo.");
@@ -79,9 +117,11 @@ export async function saveRole(ctx: Ctx, id: string | null, i: { key?: string; n
   requireWritable(ctx);
   const perms = i.permissions.filter(isPermission);
   if (perms.length !== i.permissions.length) throw validation("Permissão desconhecida.");
+  assertCanGrant(ctx, perms);
   if (id) {
     const r = await ctx.db.role.findFirst({ where: { id } });
     if (!r) throw notFound("Perfil");
+    assertCanGrant(ctx, r.permissions);
     if (r.key === "org_admin") throw rule("O perfil Administrador da organização não pode ser alterado.");
     const portal = r.key.startsWith("client_");
     if (portal && perms.some((p) => !p.startsWith("portal."))) throw rule("Perfis de portal só podem conter permissões de portal.");

@@ -97,6 +97,7 @@ export async function confirmAllocation(ctx: Ctx, id: string, overrideReason?: s
 }
 
 export async function cancelAllocation(ctx: Ctx, id: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "resource.write");
   await ctx.db.allocation.update({ where: { id }, data: { status: "CANCELED" } });
   await audit(ctx, { action: "allocation.cancel", entity: "Allocation", entityId: id });

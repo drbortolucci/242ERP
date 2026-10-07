@@ -33,10 +33,13 @@ export async function accrueCommissions(ctx: Ctx, tx: TenantTx, a: { basis: "BOO
 
 /** Reverte comissões de uma origem (cancelamento, estorno, inadimplência). */
 export async function reverseCommissions(ctx: Ctx, tx: TenantTx, sourceType: string, sourceId: string, competence: CivilDate, reason: string) {
-  const entries = await tx.commissionEntry.findMany({ where: { sourceType, sourceId, kind: "ACCRUAL", status: { not: "REVERSED" } } });
+  const already = new Set((await tx.commissionEntry.findMany({ where: { sourceType, sourceId, kind: "REVERSAL" }, select: { reversalOfId: true } })).map((r) => r.reversalOfId));
+  const entries = (await tx.commissionEntry.findMany({ where: { sourceType, sourceId, kind: "ACCRUAL", status: { not: "REVERSED" } } })).filter((e) => !already.has(e.id));
   for (const e of entries) {
-    await tx.commissionEntry.create({ data: { organizationId: ctx.orgId, ruleId: e.ruleId, contractId: e.contractId, sourceType, sourceId, baseAmount: e.baseAmount, amount: dec(e.amount).negated(), status: "REVERSED", kind: "REVERSAL", reversalOfId: e.id, competence: civil(competence) } });
-    await tx.commissionEntry.update({ where: { id: e.id }, data: { status: "REVERSED" } });
+    // comissão já paga: o original permanece PAGO e a reversão fica A PAGAR (negativa), descontando de pagamentos futuros
+    const paid = e.status === "PAID";
+    await tx.commissionEntry.create({ data: { organizationId: ctx.orgId, ruleId: e.ruleId, contractId: e.contractId, sourceType, sourceId, baseAmount: e.baseAmount, amount: dec(e.amount).negated(), status: paid ? "PAYABLE" : "REVERSED", kind: "REVERSAL", reversalOfId: e.id, competence: civil(competence) } });
+    if (!paid) await tx.commissionEntry.update({ where: { id: e.id }, data: { status: "REVERSED" } });
   }
   if (entries.length) await audit(ctx, { action: "commission.reverse", entity: sourceType, entityId: sourceId, reason, changes: { entries: entries.length } }, tx);
   return entries.length;

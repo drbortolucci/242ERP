@@ -171,7 +171,7 @@ export async function setTaskStatus(ctx: Ctx, id: string, status: "TODO" | "IN_P
   if (!can(ctx, "project.write") && !can(ctx, "time.write")) requirePerm(ctx, "project.write");
   requireWritable(ctx);
   const t = await ctx.db.projectTask.findFirst({ where: { id } });
-  if (!t) throw notFound("Atividade");
+  if (!t || !(await ctx.db.project.findFirst({ where: { id: t.projectId }, select: { id: true } }))) throw notFound("Atividade");
   if (!can(ctx, "project.write") && t.assigneeProfessionalId !== ctx.professionalId) throw rule("Você só pode mover atividades atribuídas a você.");
   if (status === "IN_PROGRESS" || status === "DONE") {
     const preds = await ctx.db.taskDependency.findMany({ where: { successorId: id } });
@@ -185,9 +185,10 @@ export async function setTaskStatus(ctx: Ctx, id: string, status: "TODO" | "IN_P
 
 export async function addDependency(ctx: Ctx, predecessorId: string, successorId: string) {
   requirePerm(ctx, "project.write");
+  requireWritable(ctx);
   if (predecessorId === successorId) throw validation("Uma atividade não depende de si mesma.");
   const [a, b] = await Promise.all([ctx.db.projectTask.findFirst({ where: { id: predecessorId } }), ctx.db.projectTask.findFirst({ where: { id: successorId } })]);
-  if (!a || !b || a.projectId !== b.projectId) throw validation("Atividades inválidas.");
+  if (!a || !b || a.projectId !== b.projectId || !(await ctx.db.project.findFirst({ where: { id: a.projectId }, select: { id: true } }))) throw validation("Atividades inválidas.");
   // Evita ciclo: o sucessor não pode (direta ou indiretamente) preceder o predecessor
   const deps = await ctx.db.taskDependency.findMany({ where: { predecessorId: { in: (await ctx.db.projectTask.findMany({ where: { projectId: a.projectId } })).map((t) => t.id) } } });
   const next = new Map<string, string[]>();
@@ -211,10 +212,9 @@ export async function decideDeliverable(ctx: Ctx, taskId: string, accept: boolea
   requireWritable(ctx);
   const t = await ctx.db.projectTask.findFirst({ where: { id: taskId } });
   if (!t || !t.requiresAcceptance) throw notFound("Entregável");
-  if (ctx.kind === "CLIENT") {
-    const p = await ctx.db.project.findFirst({ where: { id: t.projectId } });
-    if (p?.partyId !== ctx.partyId) throw notFound("Entregável");
-  }
+  // Projeto recarregado pelo cliente escopado (empresa do usuário; no portal, o próprio cliente)
+  const p = await ctx.db.project.findFirst({ where: { id: t.projectId } });
+  if (!p || (ctx.kind === "CLIENT" && p.partyId !== ctx.partyId)) throw notFound("Entregável");
   if (t.acceptanceStatus === "ACCEPTED") throw rule("Entregável já aceito.");
   if (!accept && !comment?.trim()) throw validation("Informe o motivo da recusa.");
   await ctx.db.projectTask.update({ where: { id: taskId }, data: { acceptanceStatus: accept ? "ACCEPTED" : "REJECTED", acceptedAt: accept ? new Date() : null, acceptedByName: byName, acceptanceComment: comment ?? null, status: accept ? "DONE" : "IN_PROGRESS" } });
@@ -229,6 +229,9 @@ export async function decideDeliverable(ctx: Ctx, taskId: string, accept: boolea
 // ------------------------------------------------------------------ Equipe, riscos/decisões, status, ETC
 export async function addMember(ctx: Ctx, projectId: string, professionalId: string, teamRoleId?: string, responsibility?: string) {
   requirePerm(ctx, "project.write");
+  requireWritable(ctx);
+  if (!(await ctx.db.project.findFirst({ where: { id: projectId }, select: { id: true } }))) throw notFound("Projeto");
+  if (!(await ctx.db.professional.findFirst({ where: { id: professionalId }, select: { id: true } }))) throw validation("Profissional inválido.");
   if (await ctx.db.projectMember.findFirst({ where: { projectId, professionalId } })) throw conflict("Profissional já está na equipe.");
   await ctx.db.projectMember.create({ data: { organizationId: ctx.orgId, projectId, professionalId, teamRoleId: teamRoleId ?? null, responsibility: responsibility ?? null } });
   await audit(ctx, { action: "project.member_add", entity: "Project", entityId: projectId, changes: { professionalId } });
@@ -238,14 +241,16 @@ export const logSchema = z.object({ projectId: z.string(), kind: z.enum(["RISK",
 export async function addLog(ctx: Ctx, i: z.infer<typeof logSchema>) {
   requirePerm(ctx, "project.write");
   requireWritable(ctx);
+  if (!(await ctx.db.project.findFirst({ where: { id: i.projectId }, select: { id: true } }))) throw notFound("Projeto");
   const l = await ctx.db.projectLog.create({ data: { organizationId: ctx.orgId, projectId: i.projectId, kind: i.kind, title: i.title, description: i.description ?? null, probability: i.probability ?? null, impact: i.impact ?? null, ownerName: i.ownerName ?? null, dueDate: i.dueDate ? civil(i.dueDate) : null, clientVisible: i.clientVisible, createdById: ctx.userId, status: i.kind === "DECISION" ? "CLOSED" : "OPEN" } });
   await audit(ctx, { action: "project.log", entity: "Project", entityId: i.projectId, changes: { kind: i.kind, title: i.title } });
   return l;
 }
 export async function setLogStatus(ctx: Ctx, id: string, status: "OPEN" | "MITIGATING" | "CLOSED") {
   requirePerm(ctx, "project.write");
+  requireWritable(ctx);
   const l = await ctx.db.projectLog.findFirst({ where: { id } });
-  if (!l) throw notFound("Registro");
+  if (!l || !(await ctx.db.project.findFirst({ where: { id: l.projectId }, select: { id: true } }))) throw notFound("Registro");
   await ctx.db.projectLog.update({ where: { id }, data: { status } });
 }
 
@@ -253,6 +258,7 @@ export const statusReportSchema = z.object({ projectId: z.string(), overall: z.e
 export async function addStatusReport(ctx: Ctx, i: z.infer<typeof statusReportSchema>) {
   requirePerm(ctx, "project.write");
   requireWritable(ctx);
+  if (!(await ctx.db.project.findFirst({ where: { id: i.projectId }, select: { id: true } }))) throw notFound("Projeto");
   const r = await ctx.db.statusReport.create({ data: { organizationId: ctx.orgId, ...i, nextSteps: i.nextSteps ?? null, reportDate: civil(todayIn(ctx.timezone)), createdById: ctx.userId } });
   await audit(ctx, { action: "project.status_report", entity: "Project", entityId: i.projectId, changes: { overall: i.overall } });
   return r;

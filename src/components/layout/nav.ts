@@ -75,7 +75,7 @@ export const NAV: NavGroup[] = [
     label: "Controladoria",
     items: [
       { label: "DRE gerencial", href: "/app/controladoria/dre", perm: "controlling.read", module: "controlling" },
-      { label: "P&L de projetos", href: "/app/controladoria/pl", perm: ["controlling.read", "margin.view"], module: "controlling" },
+      { label: "P&L de projetos", href: "/app/controladoria/pl", perm: "controlling.read", module: "controlling" },
       { label: "Orçamentos", href: "/app/controladoria/orcamentos", perm: "controlling.read", module: "controlling" },
       { label: "Rateios", href: "/app/controladoria/rateios", perm: "controlling.read", module: "controlling" },
       { label: "Razão gerencial", href: "/app/controladoria/razao", perm: "controlling.read", module: "controlling" },
@@ -101,6 +101,7 @@ export const NAV: NavGroup[] = [
       { label: "Usuários e perfis", href: "/app/admin/usuarios", perm: "users.manage" },
       { label: "Assinatura e plano", href: "/app/admin/assinatura", perm: "org.manage" },
       { label: "Auditoria", href: "/app/admin/auditoria", perm: "audit.view" },
+      { label: "Chaves de API", href: "/app/admin/api", perm: "settings.manage", module: "api" },
       { label: "Privacidade e dados", href: "/app/admin/dados", perm: ["data.export", "support.grant"] },
     ],
   },

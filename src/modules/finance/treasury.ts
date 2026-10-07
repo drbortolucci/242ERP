@@ -13,6 +13,7 @@ import { addDays, civil, toCivil, todayIn } from "@/lib/dates";
 import { dec, money, sum } from "@/lib/money";
 import { parseStatement } from "@/domain/statement";
 import { postBankTx } from "./bank";
+import type { TenantTx } from "@/server/tenant-db";
 
 export async function accountBalances(ctx: Ctx, at = todayIn(ctx.timezone)) {
   requirePerm(ctx, "finance.read");
@@ -71,27 +72,32 @@ export async function suggestMatches(ctx: Ctx, lineId: string) {
   return rows.sort((a, b) => Math.abs(a.date.getTime() - l.date.getTime()) - Math.abs(b.date.getTime() - l.date.getTime()));
 }
 
+/** Concilia linha de extrato com movimento do livro (dentro da transação informada). */
+async function reconcileIn(ctx: Ctx, tx: TenantTx, lineId: string, transactionId: string) {
+  const l = await tx.bankStatementLine.findFirst({ where: { id: lineId } });
+  const t = await tx.bankTransaction.findFirst({ where: { id: transactionId } });
+  if (!l || !t) throw notFound("Linha ou movimento");
+  if (l.status !== "PENDING") throw conflict("Linha de extrato já conciliada ou ignorada.");
+  if (t.statementLineId) throw conflict("Movimento já conciliado com outra linha.");
+  if (l.bankAccountId !== t.bankAccountId) throw rule("Conta bancária diferente.");
+  if (!dec(l.amount).eq(dec(t.amount))) throw rule("Valores diferentes: lance a diferença (tarifa/juros) antes de conciliar.");
+  // atualizações condicionais: protegem contra conciliação simultânea da mesma linha ou do mesmo movimento
+  const r = await tx.bankStatementLine.updateMany({ where: { id: l.id, status: "PENDING" }, data: { status: "RECONCILED" } });
+  if (!r.count) throw conflict("Linha de extrato já conciliada.");
+  const m = await tx.bankTransaction.updateMany({ where: { id: t.id, statementLineId: null }, data: { statementLineId: l.id, reconciledAt: new Date() } });
+  if (!m.count) throw conflict("Movimento já conciliado com outra linha.");
+  await audit(ctx, { action: "treasury.reconcile", entity: "BankTransaction", entityId: t.id, changes: { line: l.externalId } }, tx);
+}
+
 export async function reconcile(ctx: Ctx, lineId: string, transactionId: string) {
   requirePerm(ctx, "treasury.manage");
   requireWritable(ctx);
-  await ctx.db.$transaction(async (tx) => {
-    const l = await tx.bankStatementLine.findFirst({ where: { id: lineId } });
-    const t = await tx.bankTransaction.findFirst({ where: { id: transactionId } });
-    if (!l || !t) throw notFound("Linha ou movimento");
-    if (l.status !== "PENDING") throw conflict("Linha de extrato já conciliada ou ignorada.");
-    if (t.statementLineId) throw conflict("Movimento já conciliado com outra linha.");
-    if (l.bankAccountId !== t.bankAccountId) throw rule("Conta bancária diferente.");
-    if (!dec(l.amount).eq(dec(t.amount))) throw rule("Valores diferentes: lance a diferença (tarifa/juros) antes de conciliar.");
-    // atualização condicional: protege contra conciliação simultânea da mesma linha
-    const r = await tx.bankStatementLine.updateMany({ where: { id: l.id, status: "PENDING" }, data: { status: "RECONCILED" } });
-    if (!r.count) throw conflict("Linha de extrato já conciliada.");
-    await tx.bankTransaction.update({ where: { id: t.id }, data: { statementLineId: l.id, reconciledAt: new Date() } });
-    await audit(ctx, { action: "treasury.reconcile", entity: "BankTransaction", entityId: t.id, changes: { line: l.externalId } }, tx);
-  });
+  await ctx.db.$transaction((tx) => reconcileIn(ctx, tx, lineId, transactionId));
 }
 
 export async function unreconcile(ctx: Ctx, lineId: string, reason: string) {
   requirePerm(ctx, "treasury.manage");
+  requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
   await ctx.db.$transaction(async (tx) => {
     const t = await tx.bankTransaction.findFirst({ where: { statementLineId: lineId } });
@@ -101,23 +107,24 @@ export async function unreconcile(ctx: Ctx, lineId: string, reason: string) {
   });
 }
 
-/** Cria movimento a partir da linha (tarifas, juros bancários, rendimentos) e concilia. */
+/** Cria movimento a partir da linha (tarifas, juros bancários, rendimentos) e concilia — na mesma transação. */
 export async function createFromLine(ctx: Ctx, lineId: string, description: string) {
   requirePerm(ctx, "treasury.manage");
   requireWritable(ctx);
-  const l = await ctx.db.bankStatementLine.findFirst({ where: { id: lineId } });
-  if (!l || l.status !== "PENDING") throw rule("Linha não está pendente.");
-  const t = await ctx.db.$transaction(async (tx) => {
+  return ctx.db.$transaction(async (tx) => {
+    const l = await tx.bankStatementLine.findFirst({ where: { id: lineId } });
+    if (!l || l.status !== "PENDING") throw rule("Linha não está pendente.");
     const acc = await tx.bankAccount.findFirstOrThrow({ where: { id: l.bankAccountId } });
     await assertPeriodOpen(tx, acc.companyId, toCivil(l.date), "Lançamento bancário");
-    return postBankTx(ctx, tx, { bankAccountId: l.bankAccountId, date: toCivil(l.date), amount: l.amount, description: description || l.description, kind: dec(l.amount).lt(0) ? "FEE" : "MANUAL" });
+    const t = await postBankTx(ctx, tx, { bankAccountId: l.bankAccountId, date: toCivil(l.date), amount: l.amount, description: description || l.description, kind: dec(l.amount).lt(0) ? "FEE" : "MANUAL" });
+    await reconcileIn(ctx, tx, lineId, t.id); // duplo clique: a segunda conciliação falha e desfaz o movimento
+    return t;
   });
-  await reconcile(ctx, lineId, t.id);
-  return t;
 }
 
 export async function ignoreLine(ctx: Ctx, lineId: string, reason: string) {
   requirePerm(ctx, "treasury.manage");
+  requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
   const r = await ctx.db.bankStatementLine.updateMany({ where: { id: lineId, status: "PENDING" }, data: { status: "IGNORED" } });
   if (!r.count) throw rule("Linha não está pendente.");
@@ -142,20 +149,25 @@ export async function cashFlow(ctx: Ctx, from: string, to: string, companyId?: s
     ctx.db.purchaseOrder.findMany({ where: { ...cw, status: { in: ["APPROVED", "PARTIALLY_RECEIVED", "RECEIVED"] } } }),
   ]);
   const poLines = await ctx.db.purchaseOrderLine.findMany({ where: { purchaseOrderId: { in: pos.map((p) => p.id) } } });
-  const days = new Map<string, { date: string; realizedIn: number; realizedOut: number; forecastIn: number; forecastOut: number }>();
-  const row = (d: string) => { if (!days.has(d)) days.set(d, { date: d, realizedIn: 0, realizedOut: 0, forecastIn: 0, forecastOut: 0 }); return days.get(d)!; };
-  for (const t of txs) { const r = row(toCivil(t.date)); const v = Number(t.amount); if (v >= 0) r.realizedIn += v; else r.realizedOut -= v; }
+  type Row = { date: string; realizedIn: ReturnType<typeof dec>; realizedOut: ReturnType<typeof dec>; forecastIn: ReturnType<typeof dec>; forecastOut: ReturnType<typeof dec> };
+  const days = new Map<string, Row>();
+  const row = (d: string) => { if (!days.has(d)) days.set(d, { date: d, realizedIn: dec(0), realizedOut: dec(0), forecastIn: dec(0), forecastOut: dec(0) }); return days.get(d)!; };
+  for (const t of txs) { const r = row(toCivil(t.date)); const v = dec(t.amount); if (v.gte(0)) r.realizedIn = r.realizedIn.plus(v); else r.realizedOut = r.realizedOut.minus(v); }
   const fdate = (d: string) => (d < today ? today : d);
-  for (const r of recs) if (fdate(toCivil(r.dueDate)) >= from) row(fdate(toCivil(r.dueDate))).forecastIn += Number(r.openAmount);
-  for (const p of pays) if (fdate(toCivil(p.dueDate)) >= from) row(fdate(toCivil(p.dueDate))).forecastOut += Number(p.openAmount);
+  for (const r of recs) if (fdate(toCivil(r.dueDate)) >= from) { const x = row(fdate(toCivil(r.dueDate))); x.forecastIn = x.forecastIn.plus(r.openAmount); }
+  for (const p of pays) if (fdate(toCivil(p.dueDate)) >= from) { const x = row(fdate(toCivil(p.dueDate))); x.forecastOut = x.forecastOut.plus(p.openAmount); }
   for (const po of pos) {
-    const open = dec(po.totalAmount).minus(sum(poLines.filter((l) => l.purchaseOrderId === po.id).map((l) => l.invoicedAmount)));
+    // compromisso = pedido − faturado − adiantamento (o adiantamento já é título próprio, em aberto ou pago)
+    const open = dec(po.totalAmount).minus(sum(poLines.filter((l) => l.purchaseOrderId === po.id).map((l) => l.invoicedAmount))).minus(po.advanceAmount);
     if (open.lte(0)) continue;
     const est = fdate(po.endDate ? toCivil(po.endDate) : addDays(toCivil(po.orderDate), 30));
-    if (est >= from && est <= to) row(est).forecastOut += Number(open);
+    if (est >= from && est <= to) { const x = row(est); x.forecastOut = x.forecastOut.plus(open); }
   }
-  let bal = Number(opening);
-  const series = [...days.values()].sort((a, b) => a.date.localeCompare(b.date)).map((r) => { bal += r.realizedIn - r.realizedOut + r.forecastIn - r.forecastOut; return { ...r, balance: Math.round(bal * 100) / 100 }; });
+  let bal = dec(opening);
+  const series = [...days.values()].sort((a, b) => a.date.localeCompare(b.date)).map((r) => {
+    bal = bal.plus(r.realizedIn).minus(r.realizedOut).plus(r.forecastIn).minus(r.forecastOut);
+    return { date: r.date, realizedIn: Number(money(r.realizedIn)), realizedOut: Number(money(r.realizedOut)), forecastIn: Number(money(r.forecastIn)), forecastOut: Number(money(r.forecastOut)), balance: Number(money(bal)) };
+  });
   return { opening: money(opening), series, closing: money(bal) };
 }
 

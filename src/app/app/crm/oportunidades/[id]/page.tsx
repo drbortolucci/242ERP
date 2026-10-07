@@ -1,3 +1,4 @@
+import { toPlain } from "@/lib/utils";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Notice } from "@/components/ui/page";
@@ -50,7 +51,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
             <h3 className="mb-2 mt-4 text-sm font-semibold">Serviços</h3>
             <DataTable dense rows={items} columns={[{ key: "s", label: "Serviço", render: (i) => svc.get(i.serviceId) }, { key: "m", label: "Modelo", render: (i) => i.commercialModel }, { key: "v", label: "Valor", align: "right", render: (i) => formatMoney(i.estimatedValue) }]} empty={<p className="text-sm text-slate-500">Sem itens detalhados.</p>} />
           </Card>
-          {canWrite && o.status === "OPEN" && <Card title="Editar"><OpportunityForm action={updateOpportunityAction} lk={lk} o={o} items={items.map((i) => ({ serviceId: i.serviceId, commercialModel: i.commercialModel, estimatedValue: i.estimatedValue.toString() }))} /></Card>}
+          {canWrite && o.status === "OPEN" && <Card title="Editar"><OpportunityForm action={updateOpportunityAction} lk={lk} o={toPlain(o)} items={items.map((i) => ({ serviceId: i.serviceId, commercialModel: i.commercialModel, estimatedValue: i.estimatedValue.toString() }))} /></Card>}
           <Card title="Interações e atividades">
             <ul className="divide-y text-sm">
               {activities.map((a) => (

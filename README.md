@@ -23,6 +23,12 @@ npm run worker                  # tarefas em segundo plano (outro terminal)
 
 Credenciais de demonstração são exibidas ao final do `db:seed` e valem **somente** para o ambiente local.
 
+## Usuários de demonstração
+Senha exibida ao final do seed (somente local). Perfis: `admin@`, `diretor@`, `comercial@`, `pmo@`, `recursos@`, `financeiro@`, `controladoria@`, `compras@`, `ams@`, `consultor@demo.local`; portal do cliente: `cliente@alfa.local`, `cliente@gama.local`, `cliente@beta.local`; organização isolada: `admin@outra.local`; plataforma: `plataforma@242erp.local`.
+
+## Módulos
+CRM · propostas · contratos e comissões · projetos e portfólio · recursos · horas · despesas · suprimentos (3 vias) · AMS (SLA, banco de horas) · medição e faturamento · NFS-e (adaptador) · contas a receber/pagar · tesouraria e conciliação · controladoria (razão, rateios, orçamento, DRE, P&L, fechamento) · portal do cliente · painéis por perfil · API pública · administração SaaS.
+
 ## Verificações
 ```bash
 npm run lint
@@ -38,7 +44,7 @@ npm run build
 - [Backlog](docs/BACKLOG.md) · [Matriz de requisitos](docs/MATRIZ_REQUISITOS.md) · [Progresso](docs/PROGRESSO.md)
 - [Fórmulas dos indicadores](docs/FORMULAS.md)
 - [Guia de configuração](docs/GUIA_CONFIGURACAO.md) · [Fluxos operacionais](docs/FLUXOS.md)
-- [Integrações e limitações](docs/INTEGRACOES.md)
+- [Integrações, API pública e limitações](docs/INTEGRACOES.md)
 - [Implantação, backup e restauração](docs/IMPLANTACAO.md)
 - [Contribuição](CONTRIBUTING.md)
 

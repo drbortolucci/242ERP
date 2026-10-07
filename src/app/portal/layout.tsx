@@ -21,7 +21,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <form action="/api/auth/logout" method="post"><button className="text-sm text-slate-600 underline">Sair</button></form>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6">{ctx.planModules.includes("portal") ? children : <p className="rounded border bg-white p-4 text-sm text-slate-700">O portal do cliente não está disponível no plano atual do fornecedor. Entre em contato com seu atendimento.</p>}</main>
     </div>
   );
 }

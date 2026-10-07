@@ -56,6 +56,12 @@ async function resolve(ctx: Ctx, i: ExpenseInput) {
   const billableAmount = i.billableToClient ? money(i.billableAmount && i.billableAmount !== "" ? i.billableAmount.replace(",", ".") : amount) : money(0);
   if (billableAmount.lt(0)) throw validation("Valor cobrável inválido.");
   if (!i.projectId && !contractId && !i.costCenterId) throw validation("Informe projeto, contrato ou centro de custo (apropriação).");
+  if (i.advanceId) {
+    const a = await ctx.db.expenseAdvance.findFirst({ where: { id: i.advanceId } });
+    if (!a || a.professionalId !== professionalId || a.companyId !== companyId) throw validation("Adiantamento inválido para este profissional/empresa.");
+    if (i.paidBy !== "PROFESSIONAL") throw validation("Somente despesas pagas pelo profissional são abatidas de adiantamento.");
+    if (!["APPROVED", "PAID"].includes(a.status)) throw rule("Adiantamento precisa estar aprovado/pago e ainda não prestado contas.");
+  }
   return { professionalId, companyId, contractId, partyId, amount, billableAmount };
 }
 
@@ -99,6 +105,11 @@ async function approveExpense(ctx: Ctx, tx: TenantTx, id: string) {
   await assertPeriodOpen(tx, e.companyId, e.date, "Aprovação de despesa");
   let payableId: string | null = null;
   const due = toCivil(e.date) > todayIn(ctx.timezone) ? toCivil(e.date) : addDays(todayIn(ctx.timezone), 7);
+  if (e.advanceId) {
+    // Adiantamento já prestado contas não absorve novas despesas (o reembolso ficaria sem conta a pagar)
+    const a = await tx.expenseAdvance.findFirst({ where: { id: e.advanceId } });
+    if (!a || !["APPROVED", "PAID"].includes(a.status)) throw rule("O adiantamento vinculado já foi prestado contas ou não está ativo. Remova o vínculo da despesa.");
+  }
   if (e.paidBy === "PROFESSIONAL" && dec(e.reimbursableToProfessional).gt(0) && !e.advanceId) {
     const prof = await tx.professional.findFirstOrThrow({ where: { id: e.professionalId! } });
     const number = await nextNumber(tx, ctx.orgId, "PAYABLE");

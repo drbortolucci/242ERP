@@ -22,7 +22,7 @@ export async function loginAction(_: ActionState | undefined, fd: FormData): Pro
   } catch (e) {
     return fail(e);
   }
-  redirect(mfa ? "/mfa" : next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+  redirect(mfa ? "/mfa" : safeNext(next));
 }
 
 export async function mfaAction(_: ActionState | undefined, fd: FormData): Promise<ActionState> {
@@ -90,4 +90,10 @@ export async function acceptInviteAction(_: ActionState | undefined, fd: FormDat
     return fail(e);
   }
   redirect("/");
+}
+
+/** Aceita apenas caminhos internos (evita redirecionamento aberto via "//", "/\\" ou esquemas). */
+function safeNext(next: string | undefined) {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\") || [...next].some((ch) => ch.charCodeAt(0) < 32)) return "/";
+  return next;
 }

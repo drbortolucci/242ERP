@@ -63,7 +63,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
               <Select name="professionalId" label="Profissional" options={profs} required defaultValue={suggestions[0]?.professional.id} />
               <Select name="projectId" label="Projeto" options={projects.map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} required defaultValue={req?.projectId ?? sp(s, "projeto")} />
               <FormGrid cols={2}><Input name="startDate" type="date" label="De" required defaultValue={req ? req.startDate.toISOString().slice(0, 10) : ""} /><Input name="endDate" type="date" label="Até" required defaultValue={req ? req.endDate.toISOString().slice(0, 10) : ""} /></FormGrid>
-              <FormGrid cols={2}><Select name="mode" label="Forma" options={[{ value: "PERCENT", label: "% da capacidade" }, { value: "HOURS_PER_DAY", label: "Horas por dia" }, { value: "TOTAL_HOURS", label: "Total de horas" }]} /><Input name="value" label="Valor" required defaultValue={req ? req.hours.toString() : ""} /></FormGrid>
+              <FormGrid cols={2}><Select name="mode" label="Forma" options={[{ value: "PERCENT", label: "% da capacidade" }, { value: "HOURS_PER_DAY", label: "Horas por dia" }, { value: "TOTAL_HOURS", label: "Total de horas" }]} defaultValue={req ? "TOTAL_HOURS" : "PERCENT"} /><Input name="value" label="Valor" required defaultValue={req ? req.hours.toString() : ""} /></FormGrid>
               <Select name="status" label="Tipo" options={[{ value: "TENTATIVE", label: "Reserva provisória" }, { value: "CONFIRMED", label: "Confirmada" }]} />
               <Input name="overrideReason" label="Justificativa (exigida se confirmar com conflito)" />
               <Checkbox name="billable" label="Faturável" defaultChecked />

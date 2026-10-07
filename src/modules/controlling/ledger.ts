@@ -19,6 +19,7 @@ import { isPeriodOpen } from "@/server/periods";
 import { rule } from "@/lib/errors";
 import { addMonths, civil, monthEnd, monthStart, toCivil } from "@/lib/dates";
 import { dec, money, sum } from "@/lib/money";
+import { zonedInstant } from "@/domain/sla";
 
 export interface Posting { accountKey?: string; accountId?: string; amount: ReturnType<typeof dec>; dedupeKey: string; sourceType: string; sourceId?: string | null; projectId?: string | null; contractId?: string | null; costCenterId?: string | null; businessUnitId?: string | null; partyId?: string | null; professionalId?: string | null; supplierPartyId?: string | null; serviceId?: string | null; description: string; ruleRef?: string; companyId: string }
 
@@ -56,7 +57,9 @@ export async function expectedPostings(ctx: Ctx, companyId: string, month: strin
   for (const i of invs) {
     if (i.status !== "APPROVED") continue;
     const po = i.purchaseOrderId ? pos.get(i.purchaseOrderId) : null;
-    out.push({ companyId, accountId: po?.accountId ?? undefined, accountKey: po?.accountId ? undefined : "THIRD_PARTY_COST", amount: dec(i.amount), dedupeKey: `SUPINV:${i.id}`, sourceType: "SUPPLIER_INVOICE", sourceId: i.id, projectId: po?.projectId ?? null, costCenterId: po?.costCenterId ?? null, supplierPartyId: i.supplierPartyId, contractId: po?.projectId ? proj.get(po.projectId)?.contractId ?? null : null, description: `Documento ${i.number} — pedido ${po?.number ?? ""}` });
+    // PJ: o custo chega ao projeto pelas horas aprovadas — a NF não é apropriada ao projeto (evita duplicidade)
+    const toProject = po?.projectId && po.kind !== "PJ_PROFESSIONAL" ? po.projectId : null;
+    out.push({ companyId, accountId: po?.accountId ?? undefined, accountKey: po?.accountId ? undefined : "THIRD_PARTY_COST", amount: dec(i.amount), dedupeKey: `SUPINV:${i.id}`, sourceType: "SUPPLIER_INVOICE", sourceId: i.id, projectId: toProject, costCenterId: po?.costCenterId ?? null, supplierPartyId: i.supplierPartyId, contractId: toProject ? proj.get(toProject)?.contractId ?? null : null, description: `Documento ${i.number} — pedido ${po?.number ?? ""}` });
   }
   // 3) Despesas aprovadas
   const cats = new Map((await ctx.db.expenseCategory.findMany()).map((c) => [c.id, c]));
@@ -86,7 +89,7 @@ export async function expectedPostings(ctx: Ctx, companyId: string, month: strin
     const method = c.revenueMethod;
     if (it.sourceType === "EXPENSE") { addRevenue(c, dec(it.amount), `REV:${it.id}`, `Reembolso de despesa — ${m.number}`, "ON_MEASUREMENT", { accountKey: "REVENUE_REIMBURSEMENT", projectId: it.projectId }); continue; }
     if (method === "PERCENT_COMPLETE_HOURS" && it.sourceType !== "AMS_OVERAGE" && it.sourceType !== "ADJUSTMENT") continue; // coberto pelo % de conclusão
-    if (method === "STRAIGHT_LINE" && ["AMS_FEE", "RECURRING_FEE"].includes(it.sourceType)) continue; // coberto pela linearização
+    if (method === "STRAIGHT_LINE" && !["AMS_OVERAGE", "ADJUSTMENT"].includes(it.sourceType)) continue; // linearização cobre o valor do contrato (mensalidade, marcos, horas)
     if (method === "MILESTONE" && it.sourceType === "MILESTONE") continue; // reconhecido no aceite
     addRevenue(c, dec(it.amount), `REV:${it.id}`, `${it.description} — ${m.number}`, "ON_MEASUREMENT", { projectId: it.projectId ?? undefined, serviceId: it.serviceId });
   }
@@ -100,7 +103,7 @@ export async function expectedPostings(ctx: Ctx, companyId: string, month: strin
       addRevenue(c, money(monthly), `REV:SL:${c.id}:${month.slice(0, 7)}`, `Receita linear ${month.slice(5, 7)}/${month.slice(0, 4)} — ${c.number}`, "STRAIGHT_LINE");
     }
     if (c.revenueMethod === "MILESTONE") {
-      for (const ms of await ctx.db.contractMilestone.findMany({ where: { contractId: c.id, acceptedAt: { gte: new Date(`${month}T00:00:00Z`), lt: new Date(`${addMonths(month, 1)}T00:00:00Z`) } } })) addRevenue(c, dec(ms.amount), `REV:MS:${ms.id}`, `Marco aceito: ${ms.name}`, "MILESTONE");
+      for (const ms of await ctx.db.contractMilestone.findMany({ where: { contractId: c.id, acceptedAt: { gte: zonedInstant(month, 0, ctx.timezone), lt: zonedInstant(addMonths(month, 1), 0, ctx.timezone) } } })) addRevenue(c, dec(ms.amount), `REV:MS:${ms.id}`, `Marco aceito: ${ms.name}`, "MILESTONE");
     }
     if (c.revenueMethod === "PERCENT_COMPLETE_HOURS") {
       const pr = projects.find((p) => p.contractId === c.id);
@@ -112,7 +115,8 @@ export async function expectedPostings(ctx: Ctx, companyId: string, month: strin
       const hours = (await ctx.db.timeEntry.aggregate({ where: { contractId: c.id, status: "APPROVED", date: { lte: to } }, _sum: { hours: true } }))._sum.hours ?? 0;
       const pct = dec(hours).div(effort);
       const target = money(total.times(pct.gt(1) ? 1 : pct));
-      const prev = (await ctx.db.managerialEntry.aggregate({ where: { contractId: c.id, ruleRef: "PERCENT_COMPLETE_HOURS", sourceType: "REVENUE_RECOGNITION" }, _sum: { amount: true } }))._sum.amount ?? 0;
+      // acumulado reconhecido até esta competência (meses posteriores se ajustam ao serem sincronizados)
+      const prev = (await ctx.db.managerialEntry.aggregate({ where: { contractId: c.id, ruleRef: "PERCENT_COMPLETE_HOURS", sourceType: "REVENUE_RECOGNITION", competence: { lte: civil(monthStart(month)) } }, _sum: { amount: true } }))._sum.amount ?? 0;
       const delta = money(target.minus(dec(prev)));
       if (!delta.isZero()) addRevenue(c, delta, `REV:POC:${c.id}:${month.slice(0, 7)}:${target.toFixed(2)}`, `Receita por % de conclusão (${pct.times(100).toFixed(1)}% das horas) — ${c.number}`, "PERCENT_COMPLETE_HOURS", { projectId: pr.id });
     }

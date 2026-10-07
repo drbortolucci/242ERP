@@ -130,7 +130,7 @@ export async function Party360({ ctx, party, role }: { ctx: Ctx; party: Party; r
           )}
           {can("finance.read") && (
             <Card title="Recebimentos e inadimplência">
-              <DataTable dense rows={receivables.slice(0, 20)} rowHref={(r) => `/app/financeiro/receber/${r.id}`} columns={[{ key: "number", label: "Título" }, { key: "d", label: "Vencimento", render: (r) => <span className={overdue.includes(r) ? "font-medium text-red-700" : ""}>{formatCivil(r.dueDate)}</span> }, { key: "a", label: "Valor", align: "right", render: (r) => formatMoney(r.amount) }, { key: "o", label: "Em aberto", align: "right", render: (r) => formatMoney(r.openAmount) }, { key: "s", label: "Situação", render: (r) => <StatusBadge status={r.status} /> }]} empty={<p className="text-sm text-slate-500">Nenhum título.</p>} />
+              <DataTable dense rows={receivables.slice(0, 20)} rowHref={(r) => `/app/financeiro/titulos/receber/${r.id}`} columns={[{ key: "number", label: "Título" }, { key: "d", label: "Vencimento", render: (r) => <span className={overdue.includes(r) ? "font-medium text-red-700" : ""}>{formatCivil(r.dueDate)}</span> }, { key: "a", label: "Valor", align: "right", render: (r) => formatMoney(r.amount) }, { key: "o", label: "Em aberto", align: "right", render: (r) => formatMoney(r.openAmount) }, { key: "s", label: "Situação", render: (r) => <StatusBadge status={r.status} /> }]} empty={<p className="text-sm text-slate-500">Nenhum título.</p>} />
               <p className="mt-2 text-xs text-slate-600">Recebido total: {formatMoney(money(sum(receivables.map((r) => dec(r.amount).minus(dec(r.openAmount))))))}</p>
             </Card>
           )}

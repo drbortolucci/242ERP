@@ -4,7 +4,7 @@
  * (original × revisado × realizado × previsto) e fechamento/reabertura de períodos.
  */
 import { z } from "zod";
-import { requirePerm, requireWritable, type Ctx } from "@/server/context";
+import { requirePerm, requireAnyPerm, requireWritable, type Ctx } from "@/server/context";
 import { audit } from "@/server/audit";
 import { isPeriodOpen } from "@/server/periods";
 import { conflict, notFound, rule, validation } from "@/lib/errors";
@@ -21,6 +21,7 @@ export const allocationRuleSchema = z.object({
 });
 /** Alterar uma regra cria nova versão (as execuções antigas preservam a versão usada). */
 export async function saveAllocationRule(ctx: Ctx, id: string | null, i: z.infer<typeof allocationRuleSchema>) {
+  requireWritable(ctx);
   requirePerm(ctx, "controlling.write");
   let targets: { projectId?: string; costCenterId?: string; percent: string }[] = [];
   if (i.basis === "FIXED_PERCENT") {
@@ -71,6 +72,7 @@ export async function runAllocation(ctx: Ctx, ruleId: string, monthIn: string) {
 }
 
 export async function reverseAllocation(ctx: Ctx, runId: string, reason: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "controlling.write");
   if (!reason.trim()) throw validation("Informe o motivo.");
   await ctx.db.$transaction(async (tx) => {
@@ -86,6 +88,7 @@ export async function reverseAllocation(ctx: Ctx, runId: string, reason: string)
 // ------------------------------------------------------------------ Orçamento e forecast
 export const budgetSchema = z.object({ companyId: z.string().min(1), year: z.coerce.number().int().min(2000).max(2100), kind: z.enum(["BUDGET", "FORECAST"]), name: zStr(3), basedOnId: zOptId });
 export async function createBudget(ctx: Ctx, i: z.infer<typeof budgetSchema>) {
+  requireWritable(ctx);
   requirePerm(ctx, "controlling.write");
   const last = await ctx.db.budget.findFirst({ where: { companyId: i.companyId, year: i.year, kind: i.kind }, orderBy: { version: "desc" } });
   return ctx.db.$transaction(async (tx) => {
@@ -101,6 +104,7 @@ export async function createBudget(ctx: Ctx, i: z.infer<typeof budgetSchema>) {
 
 /** Linhas: conta × centro de custo × projeto × mês (substitui a célula existente). Orçamento aprovado é imutável. */
 export async function setBudgetLines(ctx: Ctx, budgetId: string, lines: { accountId: string; costCenterId?: string | null; projectId?: string | null; month: string; amount: string }[]) {
+  requireWritable(ctx);
   requirePerm(ctx, "controlling.write");
   const b = await ctx.db.budget.findFirst({ where: { id: budgetId } });
   if (!b) throw notFound("Orçamento");
@@ -117,6 +121,7 @@ export async function setBudgetLines(ctx: Ctx, budgetId: string, lines: { accoun
 }
 
 export async function approveBudget(ctx: Ctx, budgetId: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "controlling.write");
   const b = await ctx.db.budget.findFirst({ where: { id: budgetId } });
   if (!b || b.status !== "DRAFT") throw rule("Orçamento não está em rascunho.");
@@ -237,7 +242,7 @@ export async function projectPl(ctx: Ctx, projectId: string) {
 
 // ------------------------------------------------------------------ Fechamento
 export async function closingChecklist(ctx: Ctx, companyId: string, monthIn: string) {
-  requirePerm(ctx, "controlling.read");
+  requireAnyPerm(ctx, "controlling.read", "period.close");
   const month = monthStart(monthIn);
   const from = civil(month);
   const to = civil(monthEnd(month));

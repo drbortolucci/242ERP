@@ -53,7 +53,7 @@ export async function uploadAttachment(ctx: Ctx, input: UploadInput) {
   const sniffed = sniffFile(input.data, input.fileName);
   if (!sniffed) throw validation(`Tipo de arquivo não permitido. Aceitos: ${ALLOWED_DESCRIPTION}.`);
   await assertStorageLimit(ctx.orgId, input.data.length);
-  await assertEntityAccess(ctx, input.entity, input.entityId);
+  const parent = await assertEntityAccess(ctx, input.entity, input.entityId);
 
   const sha256 = createHash("sha256").update(input.data).digest("hex");
   const key = `${ctx.orgId}/${input.entity}/${randomUUID()}.${sniffed.ext}`;
@@ -61,7 +61,7 @@ export async function uploadAttachment(ctx: Ctx, input: UploadInput) {
   const safeName = input.fileName.replace(/[^\w.\-() À-ÿ]/g, "_").slice(0, 150);
   const att = await ctx.db.attachment.create({
     data: {
-      organizationId: ctx.orgId, companyId: input.companyId ?? null, entity: input.entity, entityId: input.entityId, fileName: safeName,
+      organizationId: ctx.orgId, companyId: (parent.companyId as string | null | undefined) ?? input.companyId ?? null, entity: input.entity, entityId: input.entityId, fileName: safeName,
       mimeType: sniffed.mime, sizeBytes: input.data.length, sha256, storageKey: key, visibility: portalTicket ? "CLIENT" : input.visibility ?? "INTERNAL", uploadedById: ctx.userId,
     },
   });
@@ -77,6 +77,7 @@ async function assertEntityAccess(ctx: Ctx, entity: string, entityId: string) {
   const parent = await (ctx.db as any)[model]?.findFirst({ where: { id: entityId } });
   if (!parent) throw notFound("Registro do anexo");
   if (ctx.kind === "CLIENT" && parent.partyId !== ctx.partyId) throw forbidden();
+  return parent as { companyId?: string | null };
 }
 
 export async function listAttachments(ctx: Ctx, entity: string, entityId: string) {
@@ -86,6 +87,7 @@ export async function listAttachments(ctx: Ctx, entity: string, entityId: string
     return ctx.db.attachment.findMany({ where: { entity, entityId, visibility: "CLIENT" }, orderBy: { createdAt: "desc" } });
   }
   if (!rule || !hasAny(ctx, rule.read)) return [];
+  await assertEntityAccess(ctx, entity, entityId);
   const restricted = hasAny(ctx, ["cost.view"]) ? {} : { visibility: { not: "RESTRICTED" } };
   return ctx.db.attachment.findMany({ where: { entity, entityId, ...restricted }, orderBy: { createdAt: "desc" } });
 }
@@ -100,6 +102,8 @@ export async function readAttachment(ctx: Ctx, id: string) {
     const rule = ENTITY_PERMS[att.entity];
     if (!rule || !hasAny(ctx, rule.read)) throw forbidden();
     if (att.visibility === "RESTRICTED" && !ctx.permissions.has("cost.view")) throw forbidden();
+    // Registro pai recarregado pelo cliente escopado: usuário restrito a empresas não lê anexos de outra empresa
+    await assertEntityAccess(ctx, att.entity, att.entityId);
   }
   const data = await storage.get(att.storageKey);
   return { att, data };

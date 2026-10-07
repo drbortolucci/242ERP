@@ -1,7 +1,7 @@
 import { PageHeader, StatusBadge, Badge } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
 import { requireCtx } from "@/server/auth/next";
-import { pageAnyPerm } from "@/server/page-guard";
+import { pagePerm } from "@/server/page-guard";
 import { nameMap } from "@/modules/config/lookups";
 import { projectPl } from "@/modules/controlling/service";
 import { formatMoney } from "@/lib/money";
@@ -11,7 +11,7 @@ const pct = (v: { toFixed(n: number): string } | null) => (v === null ? "—" : 
 export const metadata = { title: "P&L de projetos" };
 export default async function PlPage() {
   const ctx = await requireCtx();
-  pageAnyPerm(ctx, "controlling.read", "margin.view");
+  pagePerm(ctx, "controlling.read");
   const projects = await ctx.db.project.findMany({ where: { status: { notIn: ["CANCELED"] } }, orderBy: { code: "asc" } });
   const rows = await Promise.all(projects.map(async (p) => ({ id: p.id, p, pl: await projectPl(ctx, p.id) })));
   const pn = await nameMap(ctx, "party", projects.map((p) => p.partyId));

@@ -141,5 +141,7 @@ export async function saveChecklist(ctx: Ctx, checked: string[], finish: boolean
 }
 
 export async function markStructureStep(ctx: Ctx) {
+  requirePerm(ctx, "settings.manage");
+  requireWritable(ctx);
   await saveState(ctx, "estrutura", 2, { reviewedAt: new Date().toISOString() });
 }

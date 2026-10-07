@@ -175,15 +175,19 @@ export async function applyAdvance(ctx: Ctx, advanceId: string, titleId: string,
 
 export async function reverseAdvanceApplication(ctx: Ctx, applicationId: string, reason: string) {
   requirePerm(ctx, "payment.reverse");
+  requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
   await ctx.db.$transaction(async (tx) => {
     const ap = await tx.advanceApplication.findFirst({ where: { id: applicationId } });
     if (!ap || ap.status !== "POSTED") throw notFound("Aplicação");
     const kind: Kind = ap.receivableId ? "RECEIVABLE" : "PAYABLE";
     const t = await lockTitle(ctx, tx, kind, (ap.receivableId ?? ap.payableId)!);
+    // atualização condicional: uma aplicação só é estornada uma vez, mesmo com chamadas simultâneas
+    const flipped = await tx.advanceApplication.updateMany({ where: { id: ap.id, status: "POSTED" }, data: { status: "REVERSED" } });
+    if (!flipped.count) throw conflict("Aplicação já estornada.");
+    await tx.$queryRawUnsafe(`SELECT id FROM "Advance" WHERE id = $1 AND "organizationId" = $2 FOR UPDATE`, ap.advanceId, ctx.orgId);
     const a = await tx.advance.findFirstOrThrow({ where: { id: ap.advanceId } });
-    await tx.advanceApplication.update({ where: { id: ap.id }, data: { status: "REVERSED" } });
-    await tx.advance.update({ where: { id: a.id }, data: { appliedAmount: money(dec(a.appliedAmount).minus(ap.amount)), status: "OPEN" } });
+    await tx.advance.update({ where: { id: a.id }, data: { appliedAmount: { decrement: ap.amount }, status: "OPEN" } });
     await setOpen(tx, kind, t.id, dec(t.amount), dec(t.openAmount).plus(ap.amount));
     if (kind === "RECEIVABLE" && (t as { billingDocumentId: string | null }).billingDocumentId) await tx.billingDocument.update({ where: { id: (t as { billingDocumentId: string }).billingDocumentId }, data: { advanceApplied: { decrement: ap.amount } } });
     await audit(ctx, { action: "advance.application_reverse", entity: "Advance", entityId: a.id, reason }, tx);
@@ -215,13 +219,15 @@ export async function offsetTitles(ctx: Ctx, i: z.infer<typeof offsetSchema>) {
 
 export async function reverseOffset(ctx: Ctx, id: string, reason: string) {
   requirePerm(ctx, "offset.approve");
+  requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
   await ctx.db.$transaction(async (tx) => {
     const o = await tx.offset.findFirst({ where: { id } });
     if (!o || o.status !== "POSTED") throw notFound("Compensação");
     const r = await lockTitle(ctx, tx, "RECEIVABLE", o.receivableId);
     const p = await lockTitle(ctx, tx, "PAYABLE", o.payableId);
-    await tx.offset.update({ where: { id }, data: { status: "REVERSED" } });
+    const flipped = await tx.offset.updateMany({ where: { id, status: "POSTED" }, data: { status: "REVERSED" } });
+    if (!flipped.count) throw conflict("Compensação já estornada.");
     await setOpen(tx, "RECEIVABLE", r.id, dec(r.amount), dec(r.openAmount).plus(o.amount));
     await setOpen(tx, "PAYABLE", p.id, dec(p.amount), dec(p.openAmount).plus(o.amount));
     await audit(ctx, { action: "offset.reverse", entity: "Offset", entityId: id, reason }, tx);
@@ -241,6 +247,7 @@ export async function aging(ctx: Ctx, kind: Kind, today = todayIn(ctx.timezone))
 export const recurringSchema = z.object({ companyId: z.string().min(1), partyId: zOptId, description: zStr(3), amount: zDecimal, dayOfMonth: z.coerce.number().int().min(1).max(28), accountId: zOptId, costCenterId: zOptId, projectId: zOptId, startDate: zDate, endDate: z.preprocess((v) => (v === "" ? undefined : v), zDate.optional()) });
 export async function createRecurringPayable(ctx: Ctx, i: z.infer<typeof recurringSchema>) {
   requirePerm(ctx, "finance.write");
+  requireWritable(ctx);
   const r = await ctx.db.recurringPayable.create({ data: { organizationId: ctx.orgId, companyId: i.companyId, partyId: i.partyId ?? null, description: i.description, amount: money(i.amount), dayOfMonth: i.dayOfMonth, accountId: i.accountId ?? null, costCenterId: i.costCenterId ?? null, projectId: i.projectId ?? null, startDate: civil(i.startDate), endDate: i.endDate ? civil(i.endDate) : null } });
   await audit(ctx, { action: "recurring_payable.create", entity: "RecurringPayable", entityId: r.id });
   return r;

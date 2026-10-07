@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { PageHeader, Card, StatusBadge, Badge, Notice } from "@/components/ui/page";
+import { PageHeader, Card, StatusBadge, Badge, Notice, EmptyState } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
-import { ActionForm, Checkbox, Input, SubmitButton } from "@/components/ui/form";
+import { ActionForm, Checkbox, Input, SubmitButton, Textarea } from "@/components/ui/form";
 import { requireCtx } from "@/server/auth/next";
 import { pageAnyPerm } from "@/server/page-guard";
 import { lookups, userNameMap } from "@/modules/config/lookups";
@@ -18,10 +18,11 @@ export default async function ClosingPage({ searchParams }: { searchParams: Prom
   pageAnyPerm(ctx, "period.close", "controlling.read");
   const companies = await lookups.companies(ctx);
   const companyId = sp(s, "empresa") ?? companies[0]?.value;
+  if (!companyId) return <><PageHeader title="Fechamento de períodos" breadcrumbs={[{ label: "Controladoria" }, { label: "Fechamento" }]} /><EmptyState title="Nenhuma empresa disponível" description="Cadastre uma empresa (ou peça acesso a uma) para controlar o fechamento de competências." /></>;
   const cur = monthStart(todayIn(ctx.timezone));
   const months = Array.from({ length: 6 }, (_, i) => addMonths(cur, -(i + 1)));
   const [periods, recog] = await Promise.all([ctx.db.accountingPeriod.findMany({ where: { companyId } }), getSetting(ctx, "revenueRecognition")]);
-  const checks = await Promise.all(months.map(async (m) => ({ id: m, m, period: periods.find((p) => toCivil(p.month) === m), list: await closingChecklist(ctx, companyId!, m) })));
+  const checks = await Promise.all(months.map(async (m) => ({ id: m, m, period: periods.find((p) => toCivil(p.month) === m), list: await closingChecklist(ctx, companyId, m) })));
   const users = await userNameMap(periods.flatMap((p) => [p.closedById, p.reopenedById]));
   return (
     <>
@@ -44,7 +45,7 @@ export default async function ClosingPage({ searchParams }: { searchParams: Prom
           <p className="text-sm">{recog.notes}</p>
           <ul className="mt-2 list-disc pl-5 text-xs text-slate-600"><li>Horas e medições: receita na competência da medição aprovada</li><li>Marcos: no aceite do marco</li><li>Linear: mensalidade (ou valor ÷ meses) por competência</li><li>% de conclusão: valor do contrato × horas aprovadas ÷ esforço da linha de base</li><li>Deduções gerenciais pela alíquota informada no contrato</li></ul>
           {recog.approvedBy ? <div className="mt-3"><Notice tone="success">Aprovadas por {recog.approvedBy} em {recog.approvedAt ? formatInstant(new Date(recog.approvedAt), ctx.timezone) : "—"}.</Notice></div> : <div className="mt-3"><Notice tone="warn">Regras ainda não aprovadas pelo responsável da empresa.</Notice></div>}
-          {ctx.permissions.has("controlling.write") && <ActionForm action={approveRecognitionAction} className="mt-3"><SubmitButton variant="secondary">Registrar aprovação das regras</SubmitButton></ActionForm>}
+          {ctx.permissions.has("controlling.write") && <ActionForm action={approveRecognitionAction} className="mt-3"><Textarea name="notes" label="Observações (opcional)" defaultValue={recog.notes ?? ""} /><SubmitButton variant="secondary">Registrar aprovação das regras</SubmitButton></ActionForm>}
         </Card>
       </div>
     </>

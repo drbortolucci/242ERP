@@ -48,3 +48,23 @@ A situação detalhada e as evidências estão em [MATRIZ_REQUISITOS.md](MATRIZ_
 
 ## Etapa 9 — Integrações e produção
 - Assinatura SaaS (provedor + webhooks), adaptadores, API externa, observabilidade, checklist de produção
+
+## Situação (versão 1.0.0)
+Etapas 1 a 9 implementadas e validadas (ver matriz). Itens remanescentes:
+
+| Item | Tipo |
+|------|------|
+| Cenários de fluxo de caixa (otimista/pessimista) | ⏳ Pendente |
+| P&L por cliente/contrato na interface (o serviço de DRE já aceita filtro por cliente) | ⏳ Pendente |
+| SSO corporativo (OIDC/SAML) | ⏳ Pendente |
+| Política de conteúdo (CSP) estrita | ⏳ Pendente |
+| Provedor real de cobrança de assinaturas SaaS | 🔌 Externo |
+| Provedor de NFS-e homologado + validação do responsável fiscal | 🔌 Externo |
+| E-mail transacional real | 🔌 Externo |
+| Assinatura eletrônica certificada | 🔌 Externo |
+| Integração bancária automática (API/CNAB) | 🔌 Externo |
+| Conversão cambial (multimoeda) | ⏳ Pendente |
+| Atualizar Next/React quando corrigirem a retomada de hidratação após suspensão no shell (ver nota abaixo) | ⏳ Dependência |
+
+**Nota técnica — hidratação.** No Next 15.5 (React canary embutido), quando a hidratação suspende dentro do shell (payload RSC ainda chegando), o React pode retomar com o cursor já avançado e emitir o erro recuperável #418. Ocorria de forma intermitente em páginas muito grandes (a tela de perfis tinha ~520 KB). Mitigação adotada: páginas leves (perfis passou a renderizar um perfil por vez); 480 carregamentos em 12 telas sem erro. Um limite de Suspense acima do shell elimina o erro, mas faz o Next transmitir a página (403/404 viram 200) ou deixa transições de Server Actions pendentes — por isso não foi adotado. Mantenha telas abaixo de ~150 KB de HTML (pagine listas e evite repetir formulários extensos por linha).
+

@@ -3,7 +3,7 @@ import { loginAs } from "./helpers";
 
 test("gestor navega por projetos, portfólio, recursos, horas e despesas", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   await loginAs(page, "pmo@demo.local");
   for (const url of ["/app/projetos", "/app/projetos/portfolio", "/app/recursos", "/app/recursos?visao=mensal", "/app/horas", "/app/horas/aprovacao", "/app/despesas", "/app/minha-area"]) {
     const res = await page.goto(url);

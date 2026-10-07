@@ -191,6 +191,7 @@ export async function changePriority(ctx: Ctx, id: string, impact: number, urgen
 }
 
 export async function linkProblem(ctx: Ctx, id: string, problemId: string | null) {
+  requireWritable(ctx);
   requirePerm(ctx, "ams.write");
   const t = await getTicket(ctx, id);
   if (problemId) {
@@ -203,6 +204,7 @@ export async function linkProblem(ctx: Ctx, id: string, problemId: string | null
 }
 
 export async function rateTicket(ctx: Ctx, id: string, score: number, comment?: string) {
+  requireWritable(ctx);
   const t = await getTicket(ctx, id);
   if (!isClient(ctx)) requirePerm(ctx, "ams.write");
   if (!["RESOLVED", "CLOSED"].includes(t.status)) throw rule("Avalie após a solução.");

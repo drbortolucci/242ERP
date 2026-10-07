@@ -13,6 +13,8 @@ const EXCLUDE = new Set(["Session", "PasswordResetToken", "RateLimitBucket", "Ap
 export async function requestDataExport(ctx: Ctx) {
   requirePerm(ctx, "data.export");
   requirePerm(ctx, "org.manage");
+  if (!canReadDataExport(ctx)) throw forbidden("Exportação integral exige administrador interno com acesso a todas as empresas.");
+  // Sem requireWritable: a exportação continua disponível para organizações suspensas/canceladas (portabilidade).
   const exp = await ctx.db.dataExport.create({ data: { organizationId: ctx.orgId, requestedById: ctx.userId } });
   await audit(ctx, { action: "data_export.request", entity: "DataExport", entityId: exp.id });
   await enqueueAndRun("saas.data_export", { exportId: exp.id }, { organizationId: ctx.orgId, createdById: ctx.userId });
@@ -36,8 +38,13 @@ export async function runDataExport(exportId: string) {
   return { tables: Object.keys(out).length };
 }
 
+/** Exportação contém dados de todas as empresas: apenas administradores internos sem restrição de empresa. */
+export function canReadDataExport(ctx: Ctx) {
+  return ctx.kind === "INTERNAL" && ctx.companyIds === null && !ctx.support && ctx.permissions.has("data.export") && ctx.permissions.has("org.manage");
+}
+
 export async function readDataExport(ctx: Ctx, id: string) {
-  if (!ctx.permissions.has("data.export")) throw forbidden();
+  if (!canReadDataExport(ctx)) throw forbidden();
   const exp = await ctx.db.dataExport.findFirst({ where: { id } });
   if (!exp || exp.status !== "READY" || !exp.storageKey) throw notFound("Exportação");
   await audit(ctx, { action: "data_export.download", entity: "DataExport", entityId: id });

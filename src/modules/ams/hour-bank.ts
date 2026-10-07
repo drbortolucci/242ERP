@@ -36,6 +36,13 @@ async function lockContract(ctx: Ctx, tx: TenantTx, contractId: string) {
  * registra excedente conforme a política do contrato e expira saldos vencidos.
  */
 export async function syncHourBank(ctx: Ctx, contractId: string, today = todayIn(ctx.timezone)) {
+  requirePerm(ctx, "ams.manage");
+  requireWritable(ctx);
+  return syncHourBankInternal(ctx, contractId, today);
+}
+
+/** Apuração sem verificação de permissão: usada como efeito da aprovação de horas (quem aprova não precisa de ams.manage). */
+async function syncHourBankInternal(ctx: Ctx, contractId: string, today: string) {
   const result = await ctx.db.$transaction(async (tx) => {
     const c = await lockContract(ctx, tx, contractId);
     if (c.commercialModel !== "AMS_RECURRING") throw rule("Banco de horas aplica-se a contratos AMS.");
@@ -58,6 +65,12 @@ export async function syncHourBank(ctx: Ctx, contractId: string, today = todayIn
     const overageStatus = c.overagePolicy === "BILL" ? "APPROVED" : c.overagePolicy === "BLOCK" ? "ABSORBED" : "PENDING";
     for (const te of pending) {
       const date = toCivil(te.date);
+      if (dec(te.hours).lt(0)) {
+        // ajuste negativo de horas: devolve o saldo como crédito com o vencimento da franquia do mês
+        const exp = franchiseExpiry(monthStart(date), c.hourBankPolicy, c.hourBankExpiryMonths);
+        entries.push(await tx.hourBankEntry.create({ data: { organizationId: ctx.orgId, contractId: c.id, month: civil(monthStart(date)), kind: "ADJUST", hours: dec(te.hours).negated(), expiresOn: exp ? civil(exp) : null, sourceType: "TIME_ENTRY", sourceId: te.id, notes: "Estorno de horas por ajuste de apontamento", dedupeKey: `TIME_ENTRY:${te.id}:CREDIT`, createdById: ctx.userId } }));
+        continue;
+      }
       const r = consumeFifo(creditsWithRemaining(entries), date, te.hours);
       for (const a of r.allocations) {
         entries.push(await tx.hourBankEntry.create({ data: { organizationId: ctx.orgId, contractId: c.id, month: civil(monthStart(date)), kind: "DEBIT", hours: a.hours.negated(), creditEntryId: a.creditId, sourceType: "TIME_ENTRY", sourceId: te.id, dedupeKey: `TIME_ENTRY:${te.id}:${a.creditId}`, createdById: ctx.userId } }));
@@ -94,7 +107,7 @@ export async function syncContractsOfEntries(ctx: Ctx, entryIds: string[]) {
   const entries = await ctx.db.timeEntry.findMany({ where: { id: { in: entryIds }, status: "APPROVED", contractId: { not: null } }, select: { contractId: true } });
   const ids = [...new Set(entries.map((e) => e.contractId!))];
   const ams = await ctx.db.contract.findMany({ where: { id: { in: ids }, commercialModel: "AMS_RECURRING" }, select: { id: true } });
-  for (const c of ams) await syncHourBank(ctx, c.id);
+  for (const c of ams) await syncHourBankInternal(ctx, c.id, todayIn(ctx.timezone));
 }
 
 // ------------------------------------------------------------------ Lançamentos manuais e decisão de excedente

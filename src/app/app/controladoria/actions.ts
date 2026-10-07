@@ -2,7 +2,7 @@
 import type { ActionState } from "@/server/action";
 import { z } from "zod";
 import { makeAction } from "@/server/action";
-import { requirePerm } from "@/server/context";
+import { requirePerm, requireWritable } from "@/server/context";
 import { audit } from "@/server/audit";
 import { setSetting } from "@/server/settings";
 import * as L from "@/modules/controlling/ledger";
@@ -22,6 +22,7 @@ const closePeriodActionImpl = makeAction(C.closeSchema, async (ctx, i) => { awai
 const reopenPeriodActionImpl = makeAction(z.object({ companyId: z.string(), month: z.string(), reason: z.string() }), async (ctx, i) => { await C.reopenPeriod(ctx, i.companyId, i.month, i.reason); return { revalidate: ["/app/controladoria/fechamento"], message: "Período reaberto (auditado)." }; });
 const approveRecognitionActionImpl = makeAction(z.object({ notes: z.string().optional() }), async (ctx, i) => {
   requirePerm(ctx, "controlling.write");
+  requireWritable(ctx);
   await setSetting(ctx, "revenueRecognition", { approvedBy: ctx.userName, approvedAt: new Date().toISOString(), ...(i.notes ? { notes: i.notes } : {}) });
   await audit(ctx, { action: "settings.revenue_recognition_approved", entity: "OrgSetting", entityId: "revenueRecognition" });
   return { revalidate: ["/app/controladoria/fechamento"], message: "Regras de reconhecimento aprovadas e registradas." };
