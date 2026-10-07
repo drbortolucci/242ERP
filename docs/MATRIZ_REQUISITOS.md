@@ -22,8 +22,8 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC14 | Criar títulos financeiros | Parcelas conforme condição de pagamento, soma exata | 6 | ⏳ | |
 | AC15 | Receber parcialmente e atualizar saldo | Saldo e status PARTIAL/PAID | 6 | ⏳ | |
 | AC16 | Conciliar movimento bancário | Linha de extrato ↔ movimento do livro, sem dupla contagem | 6 | ⏳ | |
-| AC17 | Abrir chamado AMS e medir SLA | Prazos em horário comercial, pausa, violação | 5 | ⏳ | |
-| AC18 | Consumir franquia e calcular excedente | Razão FIFO de horas, excedente valorizado | 5 | ⏳ | |
+| AC17 | Abrir chamado AMS e medir SLA | Prazos em horário comercial, pausa, violação | 5 | ✅ | `tests/unit/ams.test.ts` (minutos úteis, fuso, feriado, fim de semana) e `tests/integration/ams.test.ts` (pausa, violação, escalonamento, reabertura pelo cliente); E2E `06-ams.spec.ts` |
+| AC18 | Consumir franquia e calcular excedente | Razão FIFO de horas, excedente valorizado | 5 | ✅ | `ams.test.ts` (FIFO por vencimento, excedente com decisão, expiração, idempotência, concorrência, consumo na aprovação de horas); cobrança do excedente na Etapa 6 |
 | AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | ✅ | Cliente (Etapa 2) e fornecedor (cadastro, conformidade, profissionais, pedidos, cotações, projetos, aceites, documentos, títulos, adiantamentos, pendências, avaliações); E2E `05-procurement.spec.ts` |
 | AC20 | Comparar P&L original, revisado, realizado e previsto | Linha de base v1 x vigente x realizado x EAC | 7 | ⏳ | |
 | AC21 | Validar rateios sem duplicar custos | Soma após rateio = soma antes | 7 | ⏳ | |
@@ -59,7 +59,7 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | Horas | Fluxo, aprovações, ajustes | ✅ | Aprovação do cliente no portal na Etapa 8 (registro interno já disponível) |
 | Despesas | Despesas, adiantamentos, reembolso | ✅ | Devolução de saldo de adiantamento registrada (sem título a receber do profissional) |
 | Suprimentos | Ciclo completo, 3 vias, ativos, avaliação | ✅ | Requisição, cotações e mapa comparativo, verificação de orçamento, pedidos (avulsa, subcontratação, PJ, recorrente, licença), aceites/devoluções, conferência de 3 vias, divergência com SoD, ativos e renovações, conformidade e avaliação de fornecedores |
-| AMS | Chamados, SLA, franquias | ⏳ | |
+| AMS | Chamados, SLA, franquias | ✅ | Chamados (incidente, requisição, problema, mudança), matriz de prioridade, SLA em horário comercial com pausas, escalonamento, reabertura, satisfação, base de conhecimento com sugestões, banco de horas (franquia, acúmulo, pré-pago, expiração, excedente), apuração diária pelo worker. Portal do cliente na Etapa 8 (serviço já restringe cliente aos próprios chamados e comentários públicos) |
 | Faturamento | Motor de medição, cobrança, parcial, retenções | ⏳ | |
 | Fiscal | Adaptador NFS-e + simulado | ⏳ | 🔌 provedor real e validação fiscal |
 | Financeiro | CR/CP, liquidações, estornos, adiantamentos, compensações, aging | ⏳ | |

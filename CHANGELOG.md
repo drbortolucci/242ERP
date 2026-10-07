@@ -41,3 +41,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 ### Corrigido
 - Comprometido do projeto: pedidos encerrados liberam saldo e o saldo por pedido nunca é negativo.
 
+## [0.5.0] — Etapa 5: AMS
+### Adicionado
+- Chamados (incidente, requisição, problema, mudança) com prioridade por impacto × urgência, SLA de resposta e solução em minutos úteis (calendário, janela de atendimento, feriados, fuso), pausas, escalonamento, violação, reabertura, encerramento automático, vínculo a problema e satisfação.
+- Base de conhecimento (interna/visível ao cliente) com busca e sugestão de artigos no chamado.
+- Banco de horas: franquias mensais (não acumula, acumula por N meses, pré-pago), consumo FIFO por vencimento, excedente valorizado com política (cobrar, exigir aprovação, absorver), expiração, ajustes e compras pré-pagas, alerta de saldo baixo.
+- Apuração automática na aprovação de horas e diária pelo worker; varredura de SLA a cada 5 minutos; contexto de sistema auditado para tarefas agendadas.
+- Horas apontadas no chamado compõem o custo do projeto de sustentação do contrato.
+

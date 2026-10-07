@@ -1895,6 +1895,11 @@ model HourBankEntry {
   sourceId       String?
   notes          String?
   createdById    String?
+  // Excedente: PENDING (aguarda decisão) | APPROVED (cobrável) | WAIVED (abonado) | ABSORBED (política BLOCK: não cobrável)
+  overageStatus  String?
+  decidedById    String?
+  decidedAt      DateTime? @db.Timestamptz(3)
+  decisionNote   String?
   // Chave de idempotência (ex.: "TIME_ENTRY:<id>:<creditId>")
   dedupeKey      String?
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)

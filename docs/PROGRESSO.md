@@ -3,8 +3,8 @@
 Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada etapa.
 
 ## Estado atual
-- Etapa em andamento: **Etapa 5 — AMS**
-- PRs #1 e #2 integrados em `main`; Etapa 3 em `etapa-3-operacao` (PR #3); Etapa 4 em `etapa-4-suprimentos`.
+- Etapa em andamento: **Etapa 6 — Monetização e financeiro**
+- PRs #1 e #2 integrados em `main`; Etapa 3 (PR #3), Etapa 4 (PR #4) e Etapa 5 (`etapa-5-ams`) aguardando integração.
 
 ## Dependências externas e decisões
 | Item | Tipo | Situação |
@@ -38,6 +38,10 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - Restrições: pagamento das contas a pagar e aplicação de adiantamento a fornecedor ficam no Financeiro (Etapa 6); orçamento por centro de custo/conta depende do módulo de orçamento (Etapa 7) — até lá a verificação usa a linha de base do projeto.
 - Decisão: PMO recebe a permissão `purchase.receive` (o gestor do projeto aceita serviços entregues).
 
+## Etapa 5 — AMS (concluída)
+- Entregue: ver CHANGELOG 0.5.0. Testes: 73 unitários/integração + 10 E2E.
+- Restrições: notificações apenas internas (sem e-mail real em desenvolvimento); cobrança de mensalidade e excedente na Etapa 6; abertura de chamados pelo cliente via portal na Etapa 8 (regras de acesso já no serviço).
+
 ## Como continuar
 1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).
 2. `npm run db:reset` (recria banco *_dev local e carrega a demonstração).
@@ -48,3 +52,4 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - 2026-10-06 — Repositório criado; arquitetura, premissas, backlog e matriz registrados; início da Etapa 1.
 - 2026-10-06 — Etapa 1 concluída (fundação SaaS) — PR `etapa-1-fundacao`.
 - 2026-10-07 — Etapa 4 concluída (suprimentos) — PR `etapa-4-suprimentos`.
+- 2026-10-07 — Etapa 5 concluída (AMS) — PR `etapa-5-ams`.

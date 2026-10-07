@@ -44,6 +44,7 @@ async function resolveContext(ctx: Ctx, i: TimeEntryInput, profCompanyId: string
   const contexts = [i.projectId, i.ticketId, i.internalCode].filter(Boolean).length + (i.contractId && !i.projectId && !i.ticketId ? 1 : 0);
   if (contexts !== 1) throw validation("Informe exatamente um contexto: projeto, chamado AMS, contrato ou atividade interna.");
   let contractId: string | null = i.contractId ?? null;
+  let projectId: string | null = i.projectId ?? null;
   let companyId = profCompanyId;
   let billableAllowed = true;
   if (i.projectId) {
@@ -63,6 +64,8 @@ async function resolveContext(ctx: Ctx, i: TimeEntryInput, profCompanyId: string
     contractId = t.contractId;
     companyId = t.companyId;
     billableAllowed = !!t.contractId;
+    // horas do chamado também compõem o custo do projeto de sustentação do contrato (quando existir)
+    if (t.contractId) projectId = (await ctx.db.project.findFirst({ where: { contractId: t.contractId, status: { notIn: ["COMPLETED", "CANCELED"] } }, select: { id: true } }))?.id ?? null;
   } else if (contractId) {
     const c = await ctx.db.contract.findFirst({ where: { id: contractId } });
     if (!c) throw validation("Contrato inválido.");
@@ -72,7 +75,7 @@ async function resolveContext(ctx: Ctx, i: TimeEntryInput, profCompanyId: string
     const c = await ctx.db.contract.findFirst({ where: { id: contractId } });
     if (c && c.status !== "ACTIVE") throw rule("Contrato não está ativo para apontamentos.");
   }
-  return { contractId, companyId, billable: billableAllowed && i.billable };
+  return { contractId, projectId, companyId, billable: billableAllowed && i.billable };
 }
 
 async function validateLimits(ctx: Ctx, professionalId: string, date: string, hours: ReturnType<typeof dec>, exceptId?: string) {
@@ -92,16 +95,16 @@ export async function createTimeEntry(ctx: Ctx, i: TimeEntryInput) {
   requireWritable(ctx);
   const prof = await resolveProfessional(ctx, i.professionalId);
   const hours = qty(i.hours);
-  const { contractId, companyId, billable } = await resolveContext(ctx, i, prof.companyId);
+  const { contractId, projectId, companyId, billable } = await resolveContext(ctx, i, prof.companyId);
   await assertPeriodOpen(ctx.db, companyId, i.date, "Apontamento");
   const { overtime } = await validateLimits(ctx, prof.id, i.date, hours);
   // Duplicidade: mesmo profissional, data, contexto, horas e descrição
-  const dup = await ctx.db.timeEntry.findFirst({ where: { professionalId: prof.id, date: civil(i.date), projectId: i.projectId ?? null, ticketId: i.ticketId ?? null, taskId: i.taskId ?? null, hours, description: i.description, status: { not: "REJECTED" } } });
+  const dup = await ctx.db.timeEntry.findFirst({ where: { professionalId: prof.id, date: civil(i.date), projectId, ticketId: i.ticketId ?? null, taskId: i.taskId ?? null, hours, description: i.description, status: { not: "REJECTED" } } });
   if (dup) throw conflict("Apontamento duplicado: já existe lançamento idêntico nesta data.");
   const e = await ctx.db.timeEntry.create({
     data: {
       organizationId: ctx.orgId, companyId, professionalId: prof.id, date: civil(i.date), hours, description: i.description, activityType: i.activityType, billable, overtime,
-      projectId: i.projectId ?? null, taskId: i.taskId ?? null, contractId, ticketId: i.ticketId ?? null, internalCode: i.internalCode ?? null, createdById: ctx.userId,
+      projectId, taskId: i.taskId ?? null, contractId, ticketId: i.ticketId ?? null, internalCode: i.internalCode ?? null, createdById: ctx.userId,
       billingStatus: billable ? "BLOCKED" : "NOT_BILLABLE",
     },
   });
@@ -117,10 +120,10 @@ export async function updateTimeEntry(ctx: Ctx, id: string, i: TimeEntryInput) {
   await resolveProfessional(ctx, e.professionalId);
   const hours = qty(i.hours);
   const prof = await ctx.db.professional.findFirstOrThrow({ where: { id: e.professionalId } });
-  const { contractId, companyId, billable } = await resolveContext(ctx, i, prof.companyId);
+  const { contractId, projectId, companyId, billable } = await resolveContext(ctx, i, prof.companyId);
   await assertPeriodOpen(ctx.db, companyId, i.date, "Apontamento");
   const { overtime } = await validateLimits(ctx, e.professionalId, i.date, hours, id);
-  await ctx.db.timeEntry.update({ where: { id }, data: { date: civil(i.date), hours, description: i.description, activityType: i.activityType, billable, overtime, projectId: i.projectId ?? null, taskId: i.taskId ?? null, ticketId: i.ticketId ?? null, contractId, companyId, internalCode: i.internalCode ?? null, status: "DRAFT", rejectionReason: null, clientApproval: "NOT_REQUIRED", billingStatus: billable ? "BLOCKED" : "NOT_BILLABLE" } });
+  await ctx.db.timeEntry.update({ where: { id }, data: { date: civil(i.date), hours, description: i.description, activityType: i.activityType, billable, overtime, projectId, taskId: i.taskId ?? null, ticketId: i.ticketId ?? null, contractId, companyId, internalCode: i.internalCode ?? null, status: "DRAFT", rejectionReason: null, clientApproval: "NOT_REQUIRED", billingStatus: billable ? "BLOCKED" : "NOT_BILLABLE" } });
   await audit(ctx, { action: "time.update", entity: "TimeEntry", entityId: id, changes: { hours: hours.toString(), date: i.date } });
 }
 
@@ -184,6 +187,8 @@ export async function approveEntries(ctx: Ctx, ids: string[]) {
       n++;
     });
   }
+  // AMS: horas aprovadas consomem o banco de horas do contrato (FIFO, idempotente)
+  if (n) await (await import("@/modules/ams/hour-bank")).syncContractsOfEntries(ctx, ids);
   return n;
 }
 

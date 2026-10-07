@@ -97,6 +97,25 @@ export async function buildCtx(userId: string, orgId: string, opts: BuildCtxOpti
   };
 }
 
+export const SYSTEM_USER_ID = "system";
+
+/**
+ * Contexto de tarefas agendadas (sem usuário humano): escopo da organização inteira, apenas as permissões informadas,
+ * auditoria registrada como "Sistema (tarefa agendada)".
+ */
+export async function systemCtx(orgId: string, permissions: Permission[]): Promise<Ctx> {
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, include: { plan: true } });
+  if (!org) throw new AppError("NOT_FOUND", "Organização não encontrada.");
+  const modSetting = await prisma.orgSetting.findUnique({ where: { organizationId_key: { organizationId: orgId, key: "modules" } } });
+  const enabled = (modSetting?.value as { enabled?: string[] } | null)?.enabled;
+  return {
+    userId: SYSTEM_USER_ID, userName: "Sistema (tarefa agendada)", userEmail: "", orgId, orgName: org.name, orgStatus: org.status, timezone: org.timezone, currency: org.currency,
+    planModules: enabled ? org.plan.modules.filter((m) => enabled.includes(m) || m === "api") : org.plan.modules,
+    membershipId: "system", kind: "INTERNAL", permissions: new Set(permissions), roleKeys: ["system"], companyIds: null, partyId: null, professionalId: null,
+    db: createTenantDb({ orgId, companyIds: null }), correlationId: randomUUID(), support: false, readOnly: org.status === "SUSPENDED" || org.status === "CANCELED",
+  };
+}
+
 export function can(ctx: Ctx, perm: Permission): boolean {
   return ctx.permissions.has(perm);
 }
