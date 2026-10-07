@@ -29,3 +29,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Horas: fluxo rascunho→enviado→aprovado (interno)→cliente→elegível, rejeição com motivo, limites, duplicidade, hora extra, períodos fechados, snapshots de custo/tarifa, ajustes rastreáveis.
 - Despesas: custo x devido ao profissional x cobrável, comprovante obrigatório, alçadas, conta a pagar de reembolso, adiantamentos e prestação de contas.
 - Minha área (portal do consultor).
+
+## [0.4.0] — Etapa 4: Suprimentos
+### Adicionado
+- Requisições com verificação de orçamento (projeto/centro de custo), cotações e mapa comparativo (menor preço total, prazo e por item).
+- Pedidos de compra e contratações (avulsa, subcontratação, profissional PJ, recorrente com vigência, licença), alçadas com SoD, adiantamento ao fornecedor, cancelamento e encerramento de saldo.
+- Recebimentos/aceites de serviço e devoluções; conferência de 3 vias com tolerância; tratamento de divergência (aceite justificado com SoD ou recusa); contas a pagar geradas para aprovação financeira.
+- Ativos, licenças, assinaturas e materiais com movimentações e alertas de renovação.
+- Visão 360° do fornecedor; documentação de conformidade com validade; avaliações.
+- Apropriação no projeto: terceiros pela NF aprovada, PJ pelas horas (sem duplicidade), compromissos abertos.
+### Corrigido
+- Comprometido do projeto: pedidos encerrados liberam saldo e o saldo por pedido nunca é negativo.
+

@@ -97,7 +97,7 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   },
   {
     key: "pmo", name: "Gestor de projetos/PMO", description: "Projetos, recursos, horas e medições",
-    permissions: P("master.read", "crm.read", "contract.read", "project.read", "project.write", "project.baseline", "resource.read", "resource.write", "time.write", "time.write_any", "time.approve", "expense.write", "expense.approve", "purchase.request", "billing.read", "billing.measure", "margin.view", "ams.read"),
+    permissions: P("master.read", "crm.read", "contract.read", "project.read", "project.write", "project.baseline", "resource.read", "resource.write", "time.write", "time.write_any", "time.approve", "expense.write", "expense.approve", "purchase.request", "purchase.receive", "billing.read", "billing.measure", "margin.view", "ams.read"),
   },
   {
     key: "ams_manager", name: "Gestor de AMS", description: "Chamados, SLA e franquias",
