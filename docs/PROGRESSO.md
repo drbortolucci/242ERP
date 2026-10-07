@@ -3,8 +3,8 @@
 Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada etapa.
 
 ## Estado atual
-- Etapa em andamento: **Etapa 7 — Controladoria**
-- PRs #1 e #2 integrados em `main`; Etapas 3 a 6 (PRs #3–#6, empilhados) aguardando integração.
+- Etapa em andamento: **Etapa 8 — Portais e dashboards**
+- PRs #1 e #2 integrados em `main`; Etapas 3 a 7 (PRs #3–#7, empilhados) aguardando integração.
 
 ## Dependências externas e decisões
 | Item | Tipo | Situação |
@@ -46,6 +46,10 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - Entregue: ver CHANGELOG 0.6.0. Testes: 82 unitários/integração + 11 E2E.
 - Restrições: NFS-e somente simulada (🔌 provedor real + validação do responsável fiscal); nenhuma regra de retenção ou código de serviço é pré-cadastrado; integração bancária automática pendente (importação de extrato por arquivo); transferências entre empresas diferentes não suportadas (exigem mútuo).
 
+## Etapa 7 — Controladoria (concluída)
+- Entregue: ver CHANGELOG 0.7.0. Testes: 85 unitários/integração + 12 E2E.
+- Restrições: visão gerencial (não substitui contabilidade oficial nem SPED); folha importada de forma consolidada (sem integração com sistema de folha); alíquota de dedução gerencial informada no contrato pela empresa.
+
 ## Como continuar
 1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).
 2. `npm run db:reset` (recria banco *_dev local e carrega a demonstração).
@@ -58,3 +62,4 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - 2026-10-07 — Etapa 4 concluída (suprimentos) — PR `etapa-4-suprimentos`.
 - 2026-10-07 — Etapa 5 concluída (AMS) — PR `etapa-5-ams`.
 - 2026-10-07 — Etapa 6 concluída (faturamento e financeiro) — PR `etapa-6-financeiro`.
+- 2026-10-07 — Etapa 7 concluída (controladoria) — PR `etapa-7-controladoria`.

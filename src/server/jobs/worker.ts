@@ -15,6 +15,7 @@ async function schedulePeriodic() {
   await enqueue("ams.hour_bank_expiry", {}, { uniqueKey: `hourbank:${day}` });
   await enqueue("saas.billing_policy", {}, { uniqueKey: `saas-policy:${day}` });
   await enqueue("contracts.alerts", {}, { uniqueKey: `contract-alerts:${day}` });
+  await enqueue("controlling.ledger_sync", {}, { uniqueKey: `ledger:${day}` });
 }
 
 async function loop() {

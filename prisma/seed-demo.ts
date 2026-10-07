@@ -168,6 +168,8 @@ export async function seedDemo(password: string) {
   await seedAms(demo);
   const { seedBilling } = await import("./seed-billing");
   await seedBilling(demo);
+  const { seedControlling } = await import("./seed-controlling");
+  await seedControlling(demo);
   await seedSecondOrg(password);
   return demo;
 }
