@@ -3,7 +3,7 @@ import { loginAs } from "./helpers";
 
 test("controladoria navega DRE, razão com origem, P&L de projeto, orçamentos, rateios e fechamento", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   await loginAs(page, "controladoria@demo.local");
   for (const url of ["/app/controladoria/dre", "/app/controladoria/razao", "/app/controladoria/pl", "/app/controladoria/orcamentos", "/app/controladoria/rateios", "/app/controladoria/fechamento"]) {
     const res = await page.goto(url);

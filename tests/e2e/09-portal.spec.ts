@@ -3,7 +3,7 @@ import { loginAs } from "./helpers";
 
 test("cliente aprova horas no portal e não acessa telas internas", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   await loginAs(page, "cliente@gama.local");
   await expect(page).toHaveURL(/\/portal/);
   for (const url of ["/portal", "/portal/chamados", "/portal/aprovacoes", "/portal/projetos", "/portal/financeiro", "/portal/conhecimento"]) {

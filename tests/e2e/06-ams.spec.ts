@@ -3,7 +3,7 @@ import { loginAs } from "./helpers";
 
 test("gestora AMS abre, atende e resolve chamado com SLA; consulta saldos e base de conhecimento", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   await loginAs(page, "ams@demo.local");
   for (const url of ["/app/ams/chamados", "/app/ams/chamados?status=ALL", "/app/ams/saldos", "/app/ams/conhecimento"]) {
     const res = await page.goto(url);

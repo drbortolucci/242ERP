@@ -11,7 +11,7 @@ const ADMIN_PAGES = [
 
 test("administrador navega pelas telas da fundação sem erros", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   await loginAs(page, "admin@demo.local");
   for (const url of ADMIN_PAGES) {
     const res = await page.goto(url);

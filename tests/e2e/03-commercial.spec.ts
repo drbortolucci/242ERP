@@ -5,7 +5,7 @@ const PAGES = ["/app/crm/leads", "/app/crm/oportunidades", "/app/crm/oportunidad
 
 test("comercial navega no CRM, propostas e contratos", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   await loginAs(page, "comercial@demo.local");
   for (const url of PAGES) {
     const res = await page.goto(url);

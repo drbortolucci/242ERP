@@ -3,7 +3,7 @@ import { loginAs } from "./helpers";
 
 test("financeiro mede pendências, consulta cobrança, recebe título e acompanha tesouraria", async ({ page }) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => errors.push(`${page.url()} :: ${e.message.slice(0, 80)}`));
   page.on("dialog", (d) => d.accept());
   await loginAs(page, "financeiro@demo.local");
   for (const url of ["/app/faturamento/pendencias", "/app/faturamento/medicoes", "/app/faturamento/cobrancas", "/app/financeiro/receber", "/app/financeiro/pagar", "/app/financeiro/adiantamentos", "/app/financeiro/tesouraria", "/app/financeiro/conciliacao", "/app/financeiro/fluxo-caixa"]) {
