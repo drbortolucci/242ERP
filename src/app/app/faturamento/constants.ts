@@ -1,0 +1,1 @@
+export const FISCAL: Record<string, [string, "slate" | "amber" | "green" | "red"]> = { NOT_REQUESTED: ["não solicitada", "slate"], PENDING: ["em processamento", "amber"], AUTHORIZED: ["autorizada", "green"], REJECTED: ["rejeitada", "red"], CANCELED: ["cancelada", "slate"], PROCESSING: ["em processamento", "amber"], ERROR: ["erro", "red"] };

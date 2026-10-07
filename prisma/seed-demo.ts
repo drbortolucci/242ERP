@@ -166,6 +166,8 @@ export async function seedDemo(password: string) {
   Object.assign(demo.refs, await seedProcurement(demo));
   const { seedAms } = await import("./seed-ams");
   await seedAms(demo);
+  const { seedBilling } = await import("./seed-billing");
+  await seedBilling(demo);
   await seedSecondOrg(password);
   return demo;
 }

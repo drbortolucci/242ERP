@@ -15,13 +15,13 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC07 | Planejar recursos e identificar conflitos | Sobrealocação detectada em horas; exceção exige permissão e justificativa | 3 | ✅ | `operations.test.ts` (conflito, exceção autorizada com justificativa) e `tests/unit/operations.test.ts` |
 | AC08 | Apontar e aprovar horas | Fluxo rascunho→enviado→aprovado→(cliente)→elegível | 3 | ✅ | `operations.test.ts` (fluxo completo, SoD, cliente, ajuste); E2E `04-operations.spec.ts` |
 | AC09 | Registrar despesa reembolsável | Separa devido ao profissional e cobrável do cliente | 3 | ✅ | `operations.test.ts` (custo × devido ao profissional × cobrável; conta a pagar de reembolso) |
-| AC10 | Executar compra de serviço até pagamento | Requisição→cotação→PC→aceite→NF fornecedor→CP→pagamento | 4/6 | 🟡 | Até a conta a pagar: `procurement.test.ts` (ciclo completo, SoD, divergência, duplicidade) e E2E `05-procurement.spec.ts`; aprovação financeira e pagamento na Etapa 6 |
+| AC10 | Executar compra de serviço até pagamento | Requisição→cotação→PC→aceite→NF fornecedor→CP→pagamento | 4/6 | ✅ | `procurement.test.ts` (até a CP) + `billing-finance.test.ts` (aprovação de CP com SoD e liquidação); seed paga as NFs de fornecedores e aplica o adiantamento do pedido |
 | AC11 | Apropriar compras e despesas no projeto | P&L do projeto inclui terceiros e despesas sem duplicar | 4/7 | 🟡 | Projeto: `procurement.test.ts` (terceiros pela NF aprovada, PJ pelas horas, encerrado libera compromisso) e `operations.test.ts` (despesas); razão gerencial na Etapa 7 |
-| AC12 | Gerar medição com origem rastreável | Cada item aponta origem (tipo + id) | 6 | ⏳ | |
-| AC13 | Faturar parcialmente sem duplicar itens | Itens já faturados/medidos não reaparecem; unicidade no banco | 6 | ⏳ | |
-| AC14 | Criar títulos financeiros | Parcelas conforme condição de pagamento, soma exata | 6 | ⏳ | |
-| AC15 | Receber parcialmente e atualizar saldo | Saldo e status PARTIAL/PAID | 6 | ⏳ | |
-| AC16 | Conciliar movimento bancário | Linha de extrato ↔ movimento do livro, sem dupla contagem | 6 | ⏳ | |
+| AC12 | Gerar medição com origem rastreável | Cada item aponta origem (tipo + id) | 6 | ✅ | `billing-finance.test.ts`; tela da medição com link para a origem |
+| AC13 | Faturar parcialmente sem duplicar itens | Itens já faturados/medidos não reaparecem; unicidade no banco | 6 | ✅ | `billing-finance.test.ts` (parcial, repetição idempotente, item já faturado recusado, cancelamento devolve itens) |
+| AC14 | Criar títulos financeiros | Parcelas conforme condição de pagamento, soma exata | 6 | ✅ | `billing.test.ts` (soma exata) e `billing-finance.test.ts` (30/60) |
+| AC15 | Receber parcialmente e atualizar saldo | Saldo e status PARTIAL/PAID | 6 | ✅ | `billing-finance.test.ts`; E2E `07-billing-finance.spec.ts` |
+| AC16 | Conciliar movimento bancário | Linha de extrato ↔ movimento do livro, sem dupla contagem | 6 | ✅ | `billing-finance.test.ts` (reimportação sem duplicar, conciliação 1:1, tarifa); 🔌 integração bancária automática pendente |
 | AC17 | Abrir chamado AMS e medir SLA | Prazos em horário comercial, pausa, violação | 5 | ✅ | `tests/unit/ams.test.ts` (minutos úteis, fuso, feriado, fim de semana) e `tests/integration/ams.test.ts` (pausa, violação, escalonamento, reabertura pelo cliente); E2E `06-ams.spec.ts` |
 | AC18 | Consumir franquia e calcular excedente | Razão FIFO de horas, excedente valorizado | 5 | ✅ | `ams.test.ts` (FIFO por vencimento, excedente com decisão, expiração, idempotência, concorrência, consumo na aprovação de horas); cobrança do excedente na Etapa 6 |
 | AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | ✅ | Cliente (Etapa 2) e fornecedor (cadastro, conformidade, profissionais, pedidos, cotações, projetos, aceites, documentos, títulos, adiantamentos, pendências, avaliações); E2E `05-procurement.spec.ts` |
@@ -32,9 +32,9 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC24 | Restringir portal ao cliente autorizado | Cliente vê só seus dados, sem custos/comentários internos | 8 | ⏳ | |
 | AC25 | Impedir acesso entre organizações | Cliente Prisma escopado | 1 | ✅ | `tenant-isolation.test.ts`; exportação isolada em `foundation.test.ts` |
 | AC26 | Respeitar escopos de empresa | Usuário com escopo não lê/grava outra empresa | 1 | ✅ | `tenant-isolation.test.ts` (escopo de empresa leitura/escrita) |
-| AC27 | Estornar operação sem perder histórico | Estorno cria registro inverso vinculado | 6 | ⏳ | |
+| AC27 | Estornar operação sem perder histórico | Estorno cria registro inverso vinculado | 6 | ✅ | `billing-finance.test.ts` (liquidação e movimento bancário inversos vinculados; comissão revertida) |
 | AC28 | Preservar documentos ao alterar tarifas e configurações | Snapshots/vigência | 2/3 | ✅ | Snapshot de tarifas do contrato e proposta aprovada imutável (`commercial.test.ts`); custo/hora com vigência (`foundation.test.ts`) |
-| AC29 | Impedir duplicidades em operações concorrentes | Medição/cobrança/liquidação simultâneas | 6 | ⏳ | |
+| AC29 | Impedir duplicidades em operações concorrentes | Medição/cobrança/liquidação simultâneas | 6 | ✅ | Medições simultâneas (`billing-finance.test.ts`), chaves de idempotência de emissão e liquidação, bloqueio de títulos (`FOR UPDATE`), apuração AMS concorrente (`ams.test.ts`) |
 | AC30 | Executar CI no GitHub | Workflow verde | 1 | 🟡 | Workflow `.github/workflows/ci.yml` (aguardando primeira execução no PR) |
 | AC31 | Demonstrar ciclo completo com dados fictícios | Seed gera dados por meio dos serviços (não números fixos) | 8 | ⏳ | |
 
@@ -60,10 +60,10 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | Despesas | Despesas, adiantamentos, reembolso | ✅ | Devolução de saldo de adiantamento registrada (sem título a receber do profissional) |
 | Suprimentos | Ciclo completo, 3 vias, ativos, avaliação | ✅ | Requisição, cotações e mapa comparativo, verificação de orçamento, pedidos (avulsa, subcontratação, PJ, recorrente, licença), aceites/devoluções, conferência de 3 vias, divergência com SoD, ativos e renovações, conformidade e avaliação de fornecedores |
 | AMS | Chamados, SLA, franquias | ✅ | Chamados (incidente, requisição, problema, mudança), matriz de prioridade, SLA em horário comercial com pausas, escalonamento, reabertura, satisfação, base de conhecimento com sugestões, banco de horas (franquia, acúmulo, pré-pago, expiração, excedente), apuração diária pelo worker. Portal do cliente na Etapa 8 (serviço já restringe cliente aos próprios chamados e comentários públicos) |
-| Faturamento | Motor de medição, cobrança, parcial, retenções | ⏳ | |
-| Fiscal | Adaptador NFS-e + simulado | ⏳ | 🔌 provedor real e validação fiscal |
-| Financeiro | CR/CP, liquidações, estornos, adiantamentos, compensações, aging | ⏳ | |
-| Tesouraria | Contas, transferências, extratos, conciliação, fluxo de caixa | ⏳ | 🔌 integração bancária automática |
+| Faturamento | Motor de medição, cobrança, parcial, retenções | ✅ | Pendências, medições (aprovação interna e do cliente), documento de cobrança (PDF interno, não fiscal), OC do cliente, retenções configuráveis |
+| Fiscal | Adaptador NFS-e + simulado | 🔌 | Adaptador, idempotência, tentativas e webhook HMAC implementados; provedor simulado em dev/teste. Provedor real, códigos de serviço e regras de retenção dependem da empresa e do responsável fiscal |
+| Financeiro | CR/CP, liquidações, estornos, adiantamentos, compensações, aging | ✅ | Inclui contas recorrentes e comissões por faturamento/recebimento |
+| Tesouraria | Contas, transferências, extratos, conciliação, fluxo de caixa | ✅ | Importação CSV/OFX; 🔌 integração bancária automática (API/CNAB) pendente |
 | Controladoria | Razão, orçamento, rateio, DRE, P&L, fechamento | ⏳ | |
 | Portais | Cliente e consultor | ⏳ | |
 | Dashboards | Por perfil, rastreáveis | ⏳ | |

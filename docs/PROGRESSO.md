@@ -3,8 +3,8 @@
 Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada etapa.
 
 ## Estado atual
-- Etapa em andamento: **Etapa 6 — Monetização e financeiro**
-- PRs #1 e #2 integrados em `main`; Etapa 3 (PR #3), Etapa 4 (PR #4) e Etapa 5 (`etapa-5-ams`) aguardando integração.
+- Etapa em andamento: **Etapa 7 — Controladoria**
+- PRs #1 e #2 integrados em `main`; Etapas 3 a 6 (PRs #3–#6, empilhados) aguardando integração.
 
 ## Dependências externas e decisões
 | Item | Tipo | Situação |
@@ -42,6 +42,10 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - Entregue: ver CHANGELOG 0.5.0. Testes: 73 unitários/integração + 10 E2E.
 - Restrições: notificações apenas internas (sem e-mail real em desenvolvimento); cobrança de mensalidade e excedente na Etapa 6; abertura de chamados pelo cliente via portal na Etapa 8 (regras de acesso já no serviço).
 
+## Etapa 6 — Monetização e financeiro (concluída)
+- Entregue: ver CHANGELOG 0.6.0. Testes: 82 unitários/integração + 11 E2E.
+- Restrições: NFS-e somente simulada (🔌 provedor real + validação do responsável fiscal); nenhuma regra de retenção ou código de serviço é pré-cadastrado; integração bancária automática pendente (importação de extrato por arquivo); transferências entre empresas diferentes não suportadas (exigem mútuo).
+
 ## Como continuar
 1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).
 2. `npm run db:reset` (recria banco *_dev local e carrega a demonstração).
@@ -53,3 +57,4 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - 2026-10-06 — Etapa 1 concluída (fundação SaaS) — PR `etapa-1-fundacao`.
 - 2026-10-07 — Etapa 4 concluída (suprimentos) — PR `etapa-4-suprimentos`.
 - 2026-10-07 — Etapa 5 concluída (AMS) — PR `etapa-5-ams`.
+- 2026-10-07 — Etapa 6 concluída (faturamento e financeiro) — PR `etapa-6-financeiro`.
