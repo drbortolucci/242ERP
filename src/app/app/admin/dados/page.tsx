@@ -5,6 +5,7 @@ import { pageAnyPerm } from "@/server/page-guard";
 import { requireCtx } from "@/server/auth/next";
 import { userNameMap } from "@/modules/config/lookups";
 import { formatInstant } from "@/lib/dates";
+import { canReadDataExport } from "@/modules/saas/data-export";
 import { exportDataAction, grantSupportAction, revokeSupportAction } from "./actions";
 
 export const metadata = { title: "Privacidade e dados" };
@@ -12,6 +13,7 @@ export const metadata = { title: "Privacidade e dados" };
 export default async function DataPage() {
   const ctx = await requireCtx();
   pageAnyPerm(ctx, "data.export", "support.grant");
+  const canExport = canReadDataExport(ctx);
   const [exports, grants] = await Promise.all([ctx.db.dataExport.findMany({ orderBy: { createdAt: "desc" }, take: 20 }), ctx.db.supportAccessGrant.findMany({ orderBy: { createdAt: "desc" }, take: 20 })]);
   const users = await userNameMap([...exports.map((e) => e.requestedById), ...grants.flatMap((g) => [g.platformUserId, g.grantedById])]);
   return (
@@ -20,8 +22,8 @@ export default async function DataPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Exportação integral dos dados da organização">
           <p className="mb-3 text-sm text-slate-600">Gera arquivo JSON com todos os registros da organização (sem senhas ou tokens). Disponível também após cancelamento, durante o prazo de retenção.</p>
-          {ctx.permissions.has("data.export") && ctx.permissions.has("org.manage") && <ActionButton action={exportDataAction} fields={{}} variant="primary">Gerar exportação</ActionButton>}
-          <div className="mt-3"><DataTable rows={exports} columns={[{ key: "createdAt", label: "Solicitada", render: (e) => formatInstant(e.createdAt, ctx.timezone) }, { key: "by", label: "Por", render: (e) => users.get(e.requestedById) }, { key: "status", label: "Situação", render: (e) => <StatusBadge status={e.status === "READY" ? "DONE" : e.status} /> }, { key: "dl", label: "", render: (e) => e.status === "READY" && <a className="text-brand-700 underline" href={`/api/data-export/${e.id}`}>Baixar ({Math.ceil((e.sizeBytes ?? 0) / 1024)} KB)</a> }]} empty={<p className="text-sm text-slate-500">Nenhuma exportação.</p>} /></div>
+          {canExport && <ActionButton action={exportDataAction} fields={{}} variant="primary">Gerar exportação</ActionButton>}
+          <div className="mt-3"><DataTable rows={exports} columns={[{ key: "createdAt", label: "Solicitada", render: (e) => formatInstant(e.createdAt, ctx.timezone) }, { key: "by", label: "Por", render: (e) => users.get(e.requestedById) }, { key: "status", label: "Situação", render: (e) => <StatusBadge status={e.status === "READY" ? "DONE" : e.status} /> }, { key: "dl", label: "", render: (e) => canExport && e.status === "READY" && <a className="text-brand-700 underline" href={`/api/data-export/${e.id}`}>Baixar ({Math.ceil((e.sizeBytes ?? 0) / 1024)} KB)</a> }]} empty={<p className="text-sm text-slate-500">Nenhuma exportação.</p>} /></div>
         </Card>
         <Card title="Acesso de suporte da plataforma">
           <p className="mb-3 text-sm text-slate-600">A equipe da plataforma não acessa seus dados por padrão. Autorize acesso temporário, somente leitura e sem custos/margens. Tudo é auditado.</p>

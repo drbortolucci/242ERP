@@ -4,6 +4,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { hmacSha256, safeEqual } from "../auth/crypto";
+import { webhookSecret } from "../config-check";
 import { providerName } from "./env";
 
 export interface FiscalIssueRequest {
@@ -38,7 +39,7 @@ export const simulatedFiscalProvider: FiscalProvider = {
     return { ok: true };
   },
   verifyWebhook(rawBody, signature) {
-    const secret = process.env.FISCAL_WEBHOOK_SECRET;
+    const secret = webhookSecret("FISCAL_WEBHOOK_SECRET");
     if (!secret || !signature) return false;
     return safeEqual(hmacSha256(secret, rawBody), signature);
   },

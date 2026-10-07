@@ -4,7 +4,7 @@ import { decideAction } from "@/app/app/aprovacoes/actions";
 
 export function DecideForm({ id, back }: { id: string; back?: string }) {
   return (
-    <ActionForm action={decideAction} className="mt-2 space-y-2">
+    <ActionForm action={decideAction} className="mt-2 space-y-2" noImplicitSubmit>
       <input type="hidden" name="id" value={id} />
       {back && <input type="hidden" name="back" value={back} />}
       <label className="sr-only" htmlFor={`c-${id}`}>Comentário</label>

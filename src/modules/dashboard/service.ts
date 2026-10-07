@@ -90,7 +90,7 @@ export async function dashboardFor(ctx: Ctx): Promise<Section[]> {
     out.push({ key: "projects", title: "Projetos", metrics: [
       { label: "Projetos em andamento", value: projects.length, href: "/app/projetos/portfolio" },
       { label: "Com atraso", value: flags.filter((f) => f.late).length, href: "/app/projetos/portfolio", tone: flags.some((f) => f.late) ? "bad" : "default" },
-      ...(can("margin.view") ? [{ label: "Estouro ou margem baixa", value: flags.filter((f) => f.overBudget || f.lowMargin).length, href: "/app/controladoria/pl", tone: flags.some((f) => f.overBudget || f.lowMargin) ? ("bad" as const) : ("default" as const) }] : []),
+      ...(can("margin.view") ? [{ label: "Estouro ou margem baixa", value: flags.filter((f) => f.overBudget || f.lowMargin).length, href: can("controlling.read") ? "/app/controladoria/pl" : "/app/projetos/portfolio", tone: flags.some((f) => f.overBudget || f.lowMargin) ? ("bad" as const) : ("default" as const) }] : []),
       { label: "Horas aguardando aprovação", value: timeSubmitted, href: "/app/horas/aprovacao", tone: timeSubmitted ? "warn" : "default" },
     ] });
   }

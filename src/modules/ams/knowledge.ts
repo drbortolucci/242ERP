@@ -1,6 +1,6 @@
 /** Base de conhecimento: artigos internos ou visíveis ao cliente, busca e sugestão a partir do chamado. */
 import { z } from "zod";
-import { requirePerm, type Ctx } from "@/server/context";
+import { requirePerm, type Ctx, requireWritable } from "@/server/context";
 import { audit } from "@/server/audit";
 import { notFound } from "@/lib/errors";
 import { zBool, zOptStr, zStr } from "@/lib/zod-helpers";
@@ -9,6 +9,7 @@ export const articleSchema = z.object({ title: zStr(3), body: zStr(10), tags: z.
 const splitTags = (s?: string) => (s ?? "").split(/[,;]/).map((t) => t.trim().toLowerCase()).filter(Boolean);
 
 export async function saveArticle(ctx: Ctx, id: string | null, i: z.infer<typeof articleSchema>) {
+  requireWritable(ctx);
   requirePerm(ctx, "ams.write");
   const data = { title: i.title, body: i.body, tags: splitTags(i.tags), system: i.system ?? null, clientVisible: i.clientVisible, published: i.published };
   if (id) {

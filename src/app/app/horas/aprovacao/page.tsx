@@ -32,7 +32,7 @@ export default async function ApprovalPage() {
       <PageHeader title="Aprovação de horas" subtitle="Aprovação operacional (interna) é separada da elegibilidade comercial (aprovação do cliente, quando exigida pelo contrato)." breadcrumbs={[{ label: "Horas", href: "/app/horas" }, { label: "Aprovação" }]} />
       <div className="space-y-6">
         <Card title={`Aguardando aprovação interna (${pending.length})`}>
-          <ActionForm action={approveEntriesAction}>
+          <ActionForm action={approveEntriesAction} noImplicitSubmit>
             <DataTable dense rows={pending} columns={[{ key: "sel", label: "", render: (e) => <input type="checkbox" name="ids[]" value={e.id} defaultChecked aria-label="Selecionar" /> }, ...cols]} empty={<p className="text-sm text-slate-500">Nada pendente.</p>} />
             {pending.length > 0 && <div className="flex flex-wrap items-end gap-2"><SubmitButton name="decision" value="approve">Aprovar selecionados</SubmitButton><Input name="reason" placeholder="Motivo da rejeição" aria-label="Motivo" /><SubmitButton name="decision" value="reject" variant="danger">Rejeitar selecionados</SubmitButton></div>}
           </ActionForm>

@@ -34,6 +34,7 @@ export async function createSalesOrderFromProposal(ctx: Ctx, proposalId: string,
 }
 
 export async function cancelSalesOrder(ctx: Ctx, id: string, reason: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "contract.write");
   const so = await ctx.db.salesOrder.findFirst({ where: { id } });
   if (!so) throw notFound("Pedido");
@@ -218,10 +219,8 @@ export async function acceptMilestone(ctx: Ctx, id: string, acceptedByName: stri
   requireWritable(ctx);
   const m = await ctx.db.contractMilestone.findFirst({ where: { id } });
   if (!m) throw notFound("Marco");
-  if (ctx.kind === "CLIENT") {
-    const c = await ctx.db.contract.findFirst({ where: { id: m.contractId } });
-    if (c?.partyId !== ctx.partyId) throw notFound("Marco");
-  }
+  const c = await ctx.db.contract.findFirst({ where: { id: m.contractId } });
+  if (!c || (ctx.kind === "CLIENT" && c.partyId !== ctx.partyId)) throw notFound("Marco");
   if (m.status !== "PENDING" && m.status !== "READY") throw rule("Marco já aceito ou faturado.");
   await ctx.db.contractMilestone.update({ where: { id }, data: { status: "ACCEPTED", acceptedAt: new Date(), acceptedByName } });
   await audit(ctx, { action: "milestone.accept", entity: "Contract", entityId: m.contractId, changes: { milestone: m.name, by: acceptedByName } });

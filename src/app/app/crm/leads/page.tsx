@@ -36,7 +36,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 <details><summary className="cursor-pointer text-xs text-brand-700">Converter</summary>
                   <ActionForm action={convertLeadAction}>
                     <input type="hidden" name="id" value={l.id} />
-                    <Select name="companyId" label="Empresa" options={lk.companies} required />
+                    <Select name="companyId" label="Empresa" options={lk.companies} placeholder="Selecione" required />
                     <Input name="title" label="Título da oportunidade" defaultValue={l.serviceInterest ?? `Oportunidade ${l.companyName ?? l.name}`} required />
                     <Input name="estimatedValue" label="Valor estimado" required />
                     <Select name="serviceId" label="Serviço" options={lk.services} placeholder="—" />

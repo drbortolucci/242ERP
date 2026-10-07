@@ -154,7 +154,7 @@ export async function createPurchaseOrder(ctx: Ctx, i: PoInput) {
   }
   if (!lines.length) throw validation("Informe ao menos um item.");
   if (lines.some((l) => l.quantity.lte(0) || l.unitPrice.lte(0))) throw validation("Quantidade e preço devem ser maiores que zero.");
-  const total = money(sum(lines.map((l) => l.quantity.times(l.unitPrice))));
+  const total = money(sum(lines.map((l) => money(l.quantity.times(l.unitPrice))))); // Σ arredondar(qtd × preço, 2) — igual às linhas
   if (money(i.advanceAmount).gt(total)) throw validation("Adiantamento maior que o pedido.");
   const projectId = i.projectId ?? requisition?.projectId ?? null;
   const costCenterId = i.costCenterId ?? requisition?.costCenterId ?? null;
@@ -196,6 +196,7 @@ export async function submitPurchaseOrder(ctx: Ctx, id: string) {
 
 async function onPoApproved(ctx: Ctx, tx: TenantTx, id: string) {
   const po = await tx.purchaseOrder.findFirstOrThrow({ where: { id } });
+  if (!["DRAFT", "PENDING_APPROVAL"].includes(po.status)) throw rule("Pedido não está aguardando aprovação (cancelado ou já aprovado).");
   await tx.purchaseOrder.update({ where: { id }, data: { status: "APPROVED", approvedById: ctx.userId, approvedAt: new Date() } });
   // Adiantamento ao fornecedor: conta a pagar própria (aplicada às NFs futuras)
   if (dec(po.advanceAmount).gt(0)) {
@@ -217,17 +218,27 @@ export async function cancelPurchaseOrder(ctx: Ctx, id: string, reason: string) 
   requirePerm(ctx, "purchase.write");
   requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
-  const po = await ctx.db.purchaseOrder.findFirst({ where: { id } });
-  if (!po) throw notFound("Pedido");
-  const [receipts, invoices] = await Promise.all([ctx.db.goodsReceipt.count({ where: { purchaseOrderId: id, status: "POSTED" } }), ctx.db.supplierInvoice.count({ where: { purchaseOrderId: id, status: { not: "CANCELED" } } })]);
-  if (receipts || invoices) throw rule("Pedido com recebimentos ou documentos do fornecedor não pode ser cancelado; encerre o saldo.");
-  await ctx.db.purchaseOrder.update({ where: { id }, data: { status: "CANCELED" } });
-  await audit(ctx, { action: "po.cancel", entity: "PurchaseOrder", entityId: id, reason });
+  await ctx.db.$transaction(async (tx) => {
+    const locked = await tx.$queryRawUnsafe<{ id: string }[]>(`SELECT id FROM "PurchaseOrder" WHERE id = $1 AND "organizationId" = $2 FOR UPDATE`, id, ctx.orgId);
+    if (!locked.length) throw notFound("Pedido");
+    const po = await tx.purchaseOrder.findFirstOrThrow({ where: { id } });
+    if (!["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(po.status)) throw rule("Pedido não pode ser cancelado nesta situação; encerre o saldo.");
+    const [receipts, invoices] = await Promise.all([tx.goodsReceipt.count({ where: { purchaseOrderId: id, status: "POSTED" } }), tx.supplierInvoice.count({ where: { purchaseOrderId: id, status: { not: "CANCELED" } } })]);
+    if (receipts || invoices) throw rule("Pedido com recebimentos ou documentos do fornecedor não pode ser cancelado; encerre o saldo.");
+    // adiantamento ainda não pago é cancelado; pago exige estorno no financeiro antes
+    const adv = await tx.payable.findFirst({ where: { sourceType: "SUPPLIER_ADVANCE", sourceId: id, status: { not: "CANCELED" } } });
+    if (adv && !dec(adv.openAmount).eq(dec(adv.amount))) throw rule("Adiantamento do pedido já pago (total ou parcial): estorne o pagamento antes.");
+    if (adv) await tx.payable.update({ where: { id: adv.id }, data: { status: "CANCELED", openAmount: 0 } });
+    await tx.approvalRequest.updateMany({ where: { entity: "PurchaseOrder", entityId: id, status: "PENDING" }, data: { status: "CANCELED" } });
+    await tx.purchaseOrder.update({ where: { id }, data: { status: "CANCELED" } });
+    await audit(ctx, { action: "po.cancel", entity: "PurchaseOrder", entityId: id, reason }, tx);
+  });
 }
 
 /** Encerra o saldo não recebido do pedido (libera compromisso). */
 export async function closePurchaseOrder(ctx: Ctx, id: string, reason: string) {
   requirePerm(ctx, "purchase.write");
+  requireWritable(ctx);
   const po = await ctx.db.purchaseOrder.findFirst({ where: { id } });
   if (!po || !["APPROVED", "PARTIALLY_RECEIVED", "RECEIVED"].includes(po.status)) throw rule("Pedido não pode ser encerrado.");
   await ctx.db.purchaseOrder.update({ where: { id }, data: { status: "CLOSED" } });
@@ -326,14 +337,17 @@ async function approveInvoiceInternal(ctx: Ctx, tx: TenantTx, invoiceId: string,
   // Distribui o valor faturado pelas linhas (ordem dos itens, até o recebido)
   let rest = dec(inv.amount);
   const lines = await tx.purchaseOrderLine.findMany({ where: { purchaseOrderId: po.id } });
+  const allocation: { lineId: string; amount: string }[] = [];
   for (const [idx, l] of lines.entries()) {
     const room = dec(l.receivedAmount).minus(dec(l.invoicedAmount));
     const take = idx === lines.length - 1 ? rest : Decimal_min(rest, room.gt(0) ? room : dec(0));
     if (take.isZero()) continue;
     await tx.purchaseOrderLine.update({ where: { id: l.id }, data: { invoicedAmount: money(dec(l.invoicedAmount).plus(take)) } });
+    allocation.push({ lineId: l.id, amount: money(take).toFixed(2) });
     rest = rest.minus(take);
   }
-  await tx.supplierInvoice.update({ where: { id: invoiceId }, data: { status: "APPROVED", approvedById: ctx.userId, divergenceNote: reason ? `${inv.divergenceNote ?? ""} | Aceita: ${reason}` : inv.divergenceNote } });
+  // distribuição guardada para o cancelamento devolver exatamente o mesmo valor a cada item
+  await tx.supplierInvoice.update({ where: { id: invoiceId }, data: { status: "APPROVED", approvedById: ctx.userId, matchResult: { ...((inv.matchResult as object | null) ?? {}), allocation }, divergenceNote: reason ? `${inv.divergenceNote ?? ""} | Aceita: ${reason}` : inv.divergenceNote } });
   const number = await nextNumber(tx, ctx.orgId, "PAYABLE");
   await tx.payable.create({
     data: {
@@ -348,15 +362,24 @@ function Decimal_min(a: ReturnType<typeof dec>, b: ReturnType<typeof dec>) {
 
 export async function cancelSupplierInvoice(ctx: Ctx, id: string, reason: string) {
   requireAnyPerm(ctx, "purchase.write", "finance.write");
+  requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
   return ctx.db.$transaction(async (tx) => {
-    const inv = await tx.supplierInvoice.findFirst({ where: { id } });
-    if (!inv || inv.status === "CANCELED") throw notFound("Documento");
+    const found = await tx.supplierInvoice.findFirst({ where: { id } });
+    if (!found || found.status === "CANCELED") throw notFound("Documento");
+    if (found.purchaseOrderId) await tx.$queryRawUnsafe(`SELECT id FROM "PurchaseOrder" WHERE id = $1 AND "organizationId" = $2 FOR UPDATE`, found.purchaseOrderId, ctx.orgId);
+    const inv = await tx.supplierInvoice.findFirstOrThrow({ where: { id } });
+    if (inv.status === "CANCELED") throw conflict("Documento já cancelado.");
+    // custo já lançado na competência: competência fechada não pode perder o documento
+    if (inv.status === "APPROVED") await assertPeriodOpen(tx, inv.companyId, toCivil(inv.competence), "Cancelamento de documento de fornecedor");
     const pay = await tx.payable.findFirst({ where: { sourceType: "SUPPLIER_INVOICE", sourceId: id } });
     if (pay && !["PENDING_APPROVAL", "OPEN"].includes(pay.status)) throw rule("Conta a pagar já liquidada (total ou parcial): estorne o pagamento antes.");
     if (pay && dec(pay.openAmount).lt(dec(pay.amount))) throw rule("Há liquidação parcial: estorne antes de cancelar.");
     if (pay) await tx.payable.update({ where: { id: pay.id }, data: { status: "CANCELED", openAmount: 0 } });
-    if (inv.status === "APPROVED") {
+    const stored = (inv.matchResult as { allocation?: { lineId: string; amount: string }[] } | null)?.allocation;
+    if (inv.status === "APPROVED" && stored?.length) {
+      for (const a of stored) await tx.purchaseOrderLine.update({ where: { id: a.lineId }, data: { invoicedAmount: { decrement: money(a.amount) } } });
+    } else if (inv.status === "APPROVED") {
       let rest = dec(inv.amount);
       for (const l of (await tx.purchaseOrderLine.findMany({ where: { purchaseOrderId: inv.purchaseOrderId! } })).reverse()) {
         const take = Decimal_min(rest, dec(l.invoicedAmount));
@@ -365,7 +388,8 @@ export async function cancelSupplierInvoice(ctx: Ctx, id: string, reason: string
         rest = rest.minus(take);
       }
     }
-    await tx.supplierInvoice.update({ where: { id }, data: { status: "CANCELED" } });
+    const flipped = await tx.supplierInvoice.updateMany({ where: { id, status: { not: "CANCELED" } }, data: { status: "CANCELED" } });
+    if (!flipped.count) throw conflict("Documento já cancelado.");
     await audit(ctx, { action: "supplier_invoice.cancel", entity: "SupplierInvoice", entityId: id, reason }, tx);
   });
 }
@@ -373,6 +397,7 @@ export async function cancelSupplierInvoice(ctx: Ctx, id: string, reason: string
 // ------------------------------------------------------------------ Avaliação, documentação, ativos
 export const evaluationSchema = z.object({ partyId: z.string(), purchaseOrderId: zOptId, quality: z.coerce.number().int().min(1).max(5), deadline: z.coerce.number().int().min(1).max(5), price: z.coerce.number().int().min(1).max(5), communication: z.coerce.number().int().min(1).max(5), comment: zOptStr });
 export async function evaluateSupplier(ctx: Ctx, i: z.infer<typeof evaluationSchema>) {
+  requireWritable(ctx);
   requireAnyPerm(ctx, "purchase.write", "purchase.receive");
   const e = await ctx.db.supplierEvaluation.create({ data: { organizationId: ctx.orgId, ...i, purchaseOrderId: i.purchaseOrderId ?? null, comment: i.comment ?? null, createdById: ctx.userId } });
   await audit(ctx, { action: "supplier.evaluate", entity: "Party", entityId: i.partyId, changes: i });
@@ -381,6 +406,7 @@ export async function evaluateSupplier(ctx: Ctx, i: z.infer<typeof evaluationSch
 
 export const complianceSchema = z.object({ partyId: z.string(), docType: zStr(2), validUntil: zOptDate, notes: zOptStr });
 export async function addComplianceDoc(ctx: Ctx, i: z.infer<typeof complianceSchema>) {
+  requireWritable(ctx);
   requireAnyPerm(ctx, "purchase.write", "master.write");
   const d = await ctx.db.supplierComplianceDoc.create({ data: { organizationId: ctx.orgId, partyId: i.partyId, docType: i.docType, validUntil: i.validUntil ? civil(i.validUntil) : null, notes: i.notes ?? null } });
   await audit(ctx, { action: "supplier.compliance_doc", entity: "Party", entityId: i.partyId, changes: i });

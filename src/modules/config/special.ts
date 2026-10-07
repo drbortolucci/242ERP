@@ -20,6 +20,7 @@ export const calendarSchema = z.object({
 });
 const toMin = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 export async function saveCalendar(ctx: Ctx, i: z.infer<typeof calendarSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   const hours = [i.h0, i.h1, i.h2, i.h3, i.h4, i.h5, i.h6];
   if (hours.some((h) => dec(h).lt(0) || dec(h).gt(24))) throw validation("Horas por dia entre 0 e 24.");
@@ -32,6 +33,7 @@ export async function saveCalendar(ctx: Ctx, i: z.infer<typeof calendarSchema>) 
 }
 export const holidaySchema = z.object({ calendarId: z.string(), date: zDate, name: zStr(2) });
 export async function addHoliday(ctx: Ctx, i: z.infer<typeof holidaySchema>) {
+  requireWritable(ctx);
   guard(ctx);
   if (!(await ctx.db.workCalendar.findFirst({ where: { id: i.calendarId } }))) throw notFound("Calendário");
   if (await ctx.db.holiday.findFirst({ where: { calendarId: i.calendarId, date: civil(i.date) } })) throw conflict("Já existe feriado nesta data.");
@@ -39,6 +41,7 @@ export async function addHoliday(ctx: Ctx, i: z.infer<typeof holidaySchema>) {
   await audit(ctx, { action: "holiday.create", entity: "Holiday", entityId: h.id, changes: i });
 }
 export async function removeHoliday(ctx: Ctx, id: string) {
+  requireWritable(ctx);
   guard(ctx);
   await ctx.db.holiday.deleteMany({ where: { id } });
   await audit(ctx, { action: "holiday.delete", entity: "Holiday", entityId: id });
@@ -47,6 +50,7 @@ export async function removeHoliday(ctx: Ctx, id: string) {
 // ------------------------------------------------------------ Condições de pagamento
 export const paymentTermSchema = z.object({ id: z.string().optional(), name: zStr(2), days: z.array(z.coerce.number().int().min(0).max(720)), percents: z.array(zDecimal) });
 export async function savePaymentTerm(ctx: Ctx, i: z.infer<typeof paymentTermSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   const rows = i.days.map((d, idx) => ({ days: d, percent: i.percents[idx] ?? "0" })).filter((r) => dec(r.percent).gt(0));
   if (!rows.length) throw validation("Informe ao menos uma parcela.");
@@ -61,6 +65,7 @@ export async function savePaymentTerm(ctx: Ctx, i: z.infer<typeof paymentTermSch
 export const priceTableSchema = z.object({ name: zStr(2), validFrom: zDate, validTo: zOptDate, copyFromId: zOptId });
 /** Nova tabela; opcionalmente copia itens de outra (nova vigência sem alterar a anterior). */
 export async function createPriceTable(ctx: Ctx, i: z.infer<typeof priceTableSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   requirePerm(ctx, "cost.manage");
   if (i.validTo && i.validTo < i.validFrom) throw validation("Vigência final anterior à inicial.");
@@ -74,6 +79,7 @@ export async function createPriceTable(ctx: Ctx, i: z.infer<typeof priceTableSch
 }
 export const priceItemSchema = z.object({ priceTableId: z.string(), teamRoleId: zOptId, seniorityId: zOptId, serviceId: zOptId, hourlyRate: zDecimal, referenceCost: zDecimal });
 export async function addPriceItem(ctx: Ctx, i: z.infer<typeof priceItemSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   requirePerm(ctx, "cost.manage");
   if (dec(i.hourlyRate).lte(0)) throw validation("Tarifa deve ser maior que zero.");
@@ -111,6 +117,7 @@ export const slaSchema = z.object({
   escalatePct: z.coerce.number().int().min(10).max(100),
 });
 export async function saveSla(ctx: Ctx, i: z.infer<typeof slaSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   const targets = [["P1", i.p1r, i.p1s], ["P2", i.p2r, i.p2s], ["P3", i.p3r, i.p3s], ["P4", i.p4r, i.p4s]] as const;
   for (const [p, r, s] of targets) if (s < r) throw validation(`${p}: prazo de solução deve ser maior ou igual ao de resposta.`);
@@ -148,6 +155,7 @@ export async function savePolicies(ctx: Ctx, i: z.infer<typeof policySchema>) {
 // ------------------------------------------------------------ Numeração
 export const sequenceSchema = z.object({ docType: z.string(), prefix: z.string().regex(/^[A-Z0-9-]{1,10}$/, "Prefixo inválido"), nextNumber: z.coerce.number().int().min(1) });
 export async function saveSequence(ctx: Ctx, i: z.infer<typeof sequenceSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   const cur = await ctx.db.documentSequence.findFirst({ where: { companyId: "", docType: i.docType } });
   if (cur && i.nextNumber < cur.nextNumber) throw validation("Não é permitido retroceder a numeração (evita números duplicados).");
@@ -173,6 +181,7 @@ export const INTEGRATION_KINDS = [
 ];
 export const integrationSchema = z.object({ kind: z.string(), provider: z.string(), environment: z.enum(["SANDBOX", "PRODUCTION"]), enabled: z.preprocess((v) => v === "on", z.boolean()), secretRef: z.string().optional() });
 export async function saveIntegration(ctx: Ctx, i: z.infer<typeof integrationSchema>) {
+  requireWritable(ctx);
   guard(ctx);
   const def = INTEGRATION_KINDS.find((k) => k.kind === i.kind);
   if (!def || !def.providers.includes(i.provider)) throw validation("Provedor não suportado para esta integração.");

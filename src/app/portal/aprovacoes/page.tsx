@@ -18,7 +18,7 @@ export default async function PortalApprovals() {
       <PageHeader title="Aprovações" />
       <Card title={`Horas aguardando aprovação (${time.length})`}>
         {time.length === 0 ? <p className="text-sm text-slate-500">Nada pendente.</p> : (
-          <ActionForm action={portalTimeDecisionAction}>
+          <ActionForm action={portalTimeDecisionAction} noImplicitSubmit>
             <table className="min-w-full text-sm"><thead><tr className="text-left text-xs text-slate-500"><th className="p-1" /><th className="p-1">Data</th><th className="p-1">Profissional</th><th className="p-1">Atividade</th><th className="p-1 text-right">Horas</th><th className="p-1 text-right">Valor</th></tr></thead>
               <tbody>{time.map((t) => <tr key={t.id} className="border-t"><td className="p-1"><input type="checkbox" name="ids[]" value={t.id} defaultChecked aria-label={`Selecionar ${t.description}`} /></td><td className="p-1">{formatCivil(t.date)}</td><td className="p-1">{t.professional}</td><td className="p-1">{t.description}</td><td className="p-1 text-right">{formatQty(t.hours)}</td><td className="p-1 text-right">{t.amount ? formatMoney(t.amount) : "—"}</td></tr>)}</tbody>
             </table>

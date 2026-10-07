@@ -127,6 +127,9 @@ export async function changePassword(userId: string, current: string, next: stri
 // ---------------------------------------------------------------- MFA
 
 export async function beginMfaSetup(userId: string) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  // Nunca desativa um MFA já ativo: para trocar o autenticador, desative primeiro (exige senha).
+  if (user.mfaEnabled) throw conflict("A autenticação em duas etapas já está ativa. Desative-a (com senha) antes de reconfigurar.");
   const secret = generateTotpSecret();
   await prisma.user.update({ where: { id: userId }, data: { mfaSecret: secret, mfaEnabled: false } });
   return secret;

@@ -30,7 +30,7 @@ export default async function ExpensePage({ params }: { params: Promise<{ id: st
             { label: "Data", value: formatCivil(e.date) }, { label: "Categoria", value: cat?.name }, { label: "Projeto", value: proj ? <Link className="text-brand-700 underline" href={`/app/projetos/${proj.id}`}>{proj.code} {proj.name}</Link> : "—" },
             { label: "Custo para a empresa", value: formatMoney(e.amount) }, { label: "Devido ao profissional", value: formatMoney(e.reimbursableToProfessional) }, { label: "Cobrável do cliente", value: formatMoney(e.billableAmount) },
             { label: "Pago por", value: e.paidBy === "PROFESSIONAL" ? "Profissional" : "Empresa" }, { label: "Faturamento", value: <StatusBadge status={e.billingStatus} /> },
-            { label: "Reembolso (conta a pagar)", value: pay ? <Link className="text-brand-700 underline" href={`/app/financeiro/pagar/${pay.id}`}>{pay.number} — <StatusBadge status={pay.status} /></Link> : "—" },
+            { label: "Reembolso (conta a pagar)", value: pay ? <Link className="text-brand-700 underline" href={`/app/financeiro/titulos/pagar/${pay.id}`}>{pay.number} — <StatusBadge status={pay.status} /></Link> : "—" },
           ]} />
         </Card>
         <div className="space-y-6">

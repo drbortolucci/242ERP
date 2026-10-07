@@ -26,7 +26,7 @@ export default async function ProposalPage({ params, searchParams }: { params: P
     ctx.db.priceTableItem.findMany(), ctx.db.salesOrder.findFirst({ where: { proposalId: id, status: { not: "CANCELED" } } }),
   ]);
   const rateHints: Record<string, { rate: string; cost: string }> = {};
-  for (const it of items) rateHints[`${it.teamRoleId ?? ""}|${it.seniorityId ?? ""}`] = { rate: it.hourlyRate.toString(), cost: it.referenceCost?.toString() ?? "0" };
+  for (const it of items) rateHints[`${it.teamRoleId ?? ""}|${it.seniorityId ?? ""}`] = { rate: it.hourlyRate.toString(), cost: showCost ? it.referenceCost?.toString() ?? "0" : "0" };
   const isCurrent = v.version === p.currentVersion;
   const editable = isCurrent && (v.status === "DRAFT" || v.status === "REJECTED") && ctx.permissions.has("proposal.write");
   const d = (x: Date | null) => (x ? toCivil(x) : "");

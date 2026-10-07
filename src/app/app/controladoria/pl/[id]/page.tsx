@@ -2,14 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, Notice } from "@/components/ui/page";
 import { requireCtx } from "@/server/auth/next";
-import { pageAnyPerm } from "@/server/page-guard";
+import { pagePerm } from "@/server/page-guard";
 import { projectPl } from "@/modules/controlling/service";
 import { formatMoney, formatQty } from "@/lib/money";
 
 export default async function ProjectPlPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireCtx();
-  pageAnyPerm(ctx, "controlling.read", "margin.view");
+  pagePerm(ctx, "controlling.read");
   const pl = await projectPl(ctx, id).catch(() => null);
   if (!pl) notFound();
   const p = pl.analytics.project;

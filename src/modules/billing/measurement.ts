@@ -109,6 +109,7 @@ export async function createMeasurement(ctx: Ctx, i: z.infer<typeof measurementS
 }
 
 export async function addAdjustment(ctx: Ctx, measurementId: string, description: string, amount: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "billing.measure");
   if (description.trim().length < 5) throw validation("Descreva e justifique o ajuste.");
   const a = money(amount);
@@ -123,6 +124,7 @@ export async function addAdjustment(ctx: Ctx, measurementId: string, description
 }
 
 export async function removeItem(ctx: Ctx, itemId: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "billing.measure");
   await ctx.db.$transaction(async (tx) => {
     const it = await tx.measurementItem.findFirst({ where: { id: itemId } });
@@ -175,6 +177,7 @@ registerApprovalHandler("Measurement", {
 
 /** Aceite do cliente (portal ou registro interno com evidência). */
 export async function clientApproveMeasurement(ctx: Ctx, id: string, byName: string) {
+  requireWritable(ctx);
   if (ctx.kind === "CLIENT") requirePerm(ctx, "portal.approve");
   else requirePerm(ctx, "billing.approve");
   if (!byName.trim()) throw validation("Informe quem aprovou pelo cliente.");
@@ -187,10 +190,13 @@ export async function clientApproveMeasurement(ctx: Ctx, id: string, byName: str
 /** Cancela medição sem itens faturados: libera as travas e devolve as origens à elegibilidade. */
 export async function cancelMeasurement(ctx: Ctx, id: string, reason: string) {
   requirePerm(ctx, "billing.measure");
+  requireWritable(ctx);
   if (!reason.trim()) throw validation("Informe o motivo.");
   await ctx.db.$transaction(async (tx) => {
     const m = await tx.measurement.findFirst({ where: { id } });
     if (!m || ["CANCELED", "INVOICED", "PARTIALLY_INVOICED"].includes(m.status)) throw rule("Medição não pode ser cancelada (há itens faturados?).");
+    // a receita da competência pode já estar no razão: competência fechada não pode perder a medição
+    await assertPeriodOpen(tx, m.companyId, toCivil(m.competence), "Cancelamento de medição");
     const items = await tx.measurementItem.findMany({ where: { measurementId: id, status: "ACTIVE" } });
     for (const it of items) {
       await tx.billingLock.deleteMany({ where: { measurementItemId: it.id } });
@@ -212,6 +218,8 @@ export async function clientRejectMeasurement(ctx: Ctx, id: string, byName: stri
   if (!reason.trim()) throw validation("Informe o motivo da recusa.");
   const m = await ctx.db.measurement.findFirst({ where: { id, ...(ctx.kind === "CLIENT" ? { partyId: ctx.partyId ?? "__none__" } : {}) } });
   if (!m || m.status !== "CLIENT_PENDING") throw rule("Medição não aguarda aprovação do cliente.");
+  requireWritable(ctx);
+  await assertPeriodOpen(ctx.db, m.companyId, toCivil(m.competence), "Recusa de medição");
   await ctx.db.measurement.update({ where: { id }, data: { status: "DRAFT", notes: `${m.notes ? `${m.notes}\n` : ""}Recusada por ${byName}: ${reason}` } });
   await audit(ctx, { action: "measurement.client_rejected", entity: "Measurement", entityId: id, reason, changes: { byName } });
   await notify(ctx.orgId, await usersWithPermission(ctx.orgId, "billing.measure"), { title: `Medição ${m.number} recusada pelo cliente`, body: reason, link: `/app/faturamento/medicoes/${id}` });

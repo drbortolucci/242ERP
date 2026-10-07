@@ -224,6 +224,7 @@ registerApprovalHandler("Proposal", {
 });
 
 export async function markSent(ctx: Ctx, proposalId: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "proposal.write");
   const { p } = await currentVersion(ctx, proposalId);
   if (p.status !== "APPROVED") throw rule("Somente propostas aprovadas podem ser enviadas ao cliente.");
@@ -251,6 +252,7 @@ export async function registerAcceptance(ctx: Ctx, proposalId: string, i: { acce
 }
 
 export async function rejectByClient(ctx: Ctx, proposalId: string, reason: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "proposal.write");
   if (!reason.trim()) throw validation("Informe o motivo.");
   const { p } = await currentVersion(ctx, proposalId);

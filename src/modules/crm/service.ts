@@ -165,6 +165,7 @@ export async function loseOpportunity(ctx: Ctx, id: string, lossReasonId: string
 }
 
 export async function reopenOpportunity(ctx: Ctx, id: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "crm.write");
   const opp = await ctx.db.opportunity.findFirst({ where: { id } });
   if (!opp || opp.status === "OPEN") throw rule("Nada a reabrir.");
@@ -197,6 +198,7 @@ export async function createActivity(ctx: Ctx, i: z.infer<typeof activitySchema>
   return a;
 }
 export async function completeActivity(ctx: Ctx, id: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "crm.write");
   const a = await ctx.db.activity.findFirst({ where: { id } });
   if (!a) throw notFound("Atividade");

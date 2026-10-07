@@ -61,7 +61,8 @@ export async function buildCtx(userId: string, orgId: string, opts: BuildCtxOpti
   } else {
     if (!membership || !membership.active) throw forbidden("Você não pertence a esta organização.");
     const roles = await prisma.role.findMany({ where: { organizationId: orgId, id: { in: membership.roleIds } } });
-    for (const r of roles) for (const p of r.permissions) permissions.add(p);
+    // Usuário de portal (cliente) recebe apenas permissões do portal, mesmo que um perfil interno lhe seja atribuído por engano.
+    for (const r of roles) for (const p of r.permissions) if (membership.kind !== "CLIENT" || p.startsWith("portal.")) permissions.add(p);
     roleKeys = roles.map((r) => r.key);
   }
 

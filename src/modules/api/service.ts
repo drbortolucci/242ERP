@@ -5,7 +5,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/server/db";
-import { requirePerm, systemCtx, type Ctx } from "@/server/context";
+import { requirePerm, requireWritable, systemCtx, type Ctx } from "@/server/context";
 import { audit } from "@/server/audit";
 import { rateLimit } from "@/server/auth/rate-limit";
 import { sha256 } from "@/server/auth/crypto";
@@ -27,7 +27,12 @@ export const apiKeySchema = z.object({ name: z.string().trim().min(3), scopes: z
 
 export async function createApiKey(ctx: Ctx, i: z.infer<typeof apiKeySchema>) {
   requirePerm(ctx, "settings.manage");
+  requireWritable(ctx);
   if (!ctx.planModules.includes("api")) throw forbidden("A API não está incluída no plano da organização.");
+  // A chave opera em todas as empresas da organização: só quem tem esse alcance pode criá-la, e apenas com permissões que já possui.
+  if (ctx.kind !== "INTERNAL" || ctx.companyIds !== null) throw forbidden("Chaves de API exigem administrador com acesso a todas as empresas.");
+  const missing = [...new Set(i.scopes.flatMap((s) => API_SCOPES[s].perms as readonly string[]))].filter((p) => !ctx.permissions.has(p));
+  if (missing.length) throw forbidden(`Você não possui as permissões exigidas pelos escopos: ${missing.join(", ")}.`);
   const prefix = randomBytes(4).toString("hex");
   const secret = `erp_${prefix}_${randomBytes(24).toString("base64url")}`;
   const k = await ctx.db.apiKey.create({ data: { organizationId: ctx.orgId, name: i.name, prefix, keyHash: sha256(secret), scopes: i.scopes, createdById: ctx.userId } });
@@ -37,6 +42,7 @@ export async function createApiKey(ctx: Ctx, i: z.infer<typeof apiKeySchema>) {
 
 export async function revokeApiKey(ctx: Ctx, id: string) {
   requirePerm(ctx, "settings.manage");
+  requireWritable(ctx);
   const r = await ctx.db.apiKey.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: new Date() } });
   if (!r.count) throw notFound("Chave");
   await audit(ctx, { action: "api_key.revoke", entity: "ApiKey", entityId: id });
@@ -48,6 +54,9 @@ export async function apiContext(authorization: string | null) {
   if (!token || !/^erp_[0-9a-f]{8}_/.test(token)) throw new AppError("UNAUTHENTICATED", "Chave de API ausente ou inválida.");
   const k = await prisma.apiKey.findUnique({ where: { keyHash: sha256(token) } });
   if (!k || k.revokedAt) throw new AppError("UNAUTHENTICATED", "Chave de API ausente ou inválida.");
+  // Chave deixa de valer se quem a criou perdeu o acesso à organização.
+  const creator = await prisma.membership.findUnique({ where: { userId_organizationId: { userId: k.createdById, organizationId: k.organizationId } } });
+  if (!creator?.active) throw new AppError("UNAUTHENTICATED", "Chave de API inativa: o responsável não tem mais acesso à organização.");
   await rateLimit(`api:${k.id}`, Number(process.env.API_RATE_LIMIT_PER_MIN ?? 600), 60);
   const org = await prisma.organization.findUniqueOrThrow({ where: { id: k.organizationId }, include: { plan: true } });
   if (!org.plan.modules.includes("api")) throw forbidden("A API não está incluída no plano da organização.");

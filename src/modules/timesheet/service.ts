@@ -128,6 +128,7 @@ export async function updateTimeEntry(ctx: Ctx, id: string, i: TimeEntryInput) {
 }
 
 export async function deleteDraftEntry(ctx: Ctx, id: string) {
+  requireWritable(ctx);
   const e = await ctx.db.timeEntry.findFirst({ where: { id } });
   if (!e) throw notFound("Apontamento");
   if (e.status !== "DRAFT") throw rule("Somente rascunhos podem ser excluídos.");
@@ -193,6 +194,7 @@ export async function approveEntries(ctx: Ctx, ids: string[]) {
 }
 
 export async function rejectEntries(ctx: Ctx, ids: string[], reason: string) {
+  requireWritable(ctx);
   requirePerm(ctx, "time.approve");
   if (!reason.trim()) throw validation("Informe o motivo da rejeição.");
   let n = 0;
@@ -252,10 +254,12 @@ export async function createAdjustment(ctx: Ctx, entryId: string, deltaHours: st
     data: {
       organizationId: ctx.orgId, companyId: e.companyId, professionalId: e.professionalId, date: civil(today), hours: d, description: `Ajuste de ${toCivil(e.date)}: ${reason}`, activityType: e.activityType, billable: e.billable,
       projectId: e.projectId, taskId: e.taskId, contractId: e.contractId, ticketId: e.ticketId, internalCode: e.internalCode, status: "APPROVED", approvedById: ctx.userId, approvedAt: new Date(),
-      costRate: e.costRate, costAmount: e.costRate ? money(dec(e.costRate).times(d)) : null, sellRate: e.sellRate, billingStatus: e.billable ? "ELIGIBLE" : "NOT_BILLABLE", adjustsEntryId: e.id, adjustmentReason: reason, createdById: ctx.userId,
+      costRate: e.costRate, costAmount: e.costRate ? money(dec(e.costRate).times(d)) : null, sellRate: e.sellRate, billingStatus: e.billable && e.billingStatus !== "NOT_BILLABLE" ? "ELIGIBLE" : "NOT_BILLABLE", adjustsEntryId: e.id, adjustmentReason: reason, createdById: ctx.userId,
     },
   });
   await audit(ctx, { action: "time.adjustment", entity: "TimeEntry", entityId: adj.id, reason, changes: { original: entryId, delta: d.toString() } });
+  // AMS: o ajuste também movimenta o banco de horas (positivo consome; negativo devolve saldo)
+  await (await import("@/modules/ams/hour-bank")).syncContractsOfEntries(ctx, [adj.id]);
   return adj;
 }
 

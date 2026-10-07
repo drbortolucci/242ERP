@@ -13,7 +13,7 @@ import { assertPeriodOpen } from "@/server/periods";
 import { getSetting } from "@/server/settings";
 import { conflict, notFound, rule, validation } from "@/lib/errors";
 import { zDate, zOptStr } from "@/lib/zod-helpers";
-import { civil, monthStart, toCivil } from "@/lib/dates";
+import { civil, monthStart, toCivil, todayIn } from "@/lib/dates";
 import { dec, money, sum } from "@/lib/money";
 import { computeWithholdings, receivableInstallments } from "@/domain/billing";
 import { accrueCommissions, reverseCommissions } from "../commissions/service";
@@ -52,6 +52,8 @@ export async function invoiceMeasurement(ctx: Ctx, i: z.infer<typeof invoiceSche
       const pos = await tx.customerPurchaseOrder.findMany({ where: { contractId: c.id, active: true } });
       const chosen = po ? pos.find((p) => p.number === po) : pos[0];
       if (!chosen) throw rule("Contrato exige ordem de compra do cliente válida.");
+      // trava a OC: emissões simultâneas de medições diferentes não podem ultrapassar o saldo
+      await tx.$queryRawUnsafe(`SELECT id FROM "CustomerPurchaseOrder" WHERE id = $1 AND "organizationId" = $2 FOR UPDATE`, chosen.id, ctx.orgId);
       const used = sum((await tx.billingDocument.findMany({ where: { contractId: c.id, customerPo: chosen.number, status: "ISSUED" } })).map((d) => d.grossAmount));
       if (used.plus(gross).gt(dec(chosen.amount))) throw rule(`Saldo da OC ${chosen.number} insuficiente (disponível ${money(dec(chosen.amount).minus(used)).toFixed(2)}).`);
       po = chosen.number;
@@ -109,7 +111,7 @@ export async function cancelBillingDocument(ctx: Ctx, id: string, reason: string
     const invoiced = await tx.measurementItem.count({ where: { measurementId: m.id, status: "INVOICED" } });
     await tx.measurement.update({ where: { id: m.id }, data: { status: invoiced ? "PARTIALLY_INVOICED" : m.clientApprovedAt ? "CLIENT_APPROVED" : "APPROVED" } });
     await tx.billingDocument.update({ where: { id }, data: { status: "CANCELED", cancelReason: reason, canceledAt: new Date() } });
-    await reverseCommissions(ctx, tx, "BILLING_DOCUMENT", id, monthStart(toCivil(new Date())), reason);
+    await reverseCommissions(ctx, tx, "BILLING_DOCUMENT", id, monthStart(todayIn(ctx.timezone)), reason);
     await audit(ctx, { action: "billing.cancel", entity: "BillingDocument", entityId: id, companyId: d.companyId, reason }, tx);
   });
 }

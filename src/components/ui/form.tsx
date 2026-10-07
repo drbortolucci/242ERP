@@ -1,5 +1,5 @@
 "use client";
-import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type ReactNode, type ComponentProps, type FormEvent } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useId, useRef, type ReactNode, type ComponentProps, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { ActionState } from "@/server/action";
@@ -14,7 +14,7 @@ const PendingContext = createContext(false);
  * Formulário ligado a uma Server Action com mensagens de erro/sucesso.
  * Submete via transição (sem a prop `action`) para que o React NÃO limpe os campos quando há erro.
  */
-export function ActionForm({ action, children, className, resetOnSuccess, successMessage = true, id }: { action: Action; children: ReactNode; className?: string; resetOnSuccess?: boolean; successMessage?: boolean; id?: string }) {
+export function ActionForm({ action, children, className, resetOnSuccess, successMessage = true, id, noImplicitSubmit }: { action: Action; children: ReactNode; className?: string; resetOnSuccess?: boolean; successMessage?: boolean; id?: string; noImplicitSubmit?: boolean }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -28,13 +28,15 @@ export function ActionForm({ action, children, className, resetOnSuccess, succes
   }
   return (
     <PendingContext.Provider value={pending}>
-    <form ref={ref} onSubmit={onSubmit} className={cn("space-y-4", className)} id={id} noValidate aria-busy={pending}>
+    <form ref={ref} method="post" onSubmit={onSubmit} className={cn("space-y-4", className)} id={id} noValidate aria-busy={pending}>
       {state?.error && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{state.error}
         {state.fieldErrors && Object.keys(state.fieldErrors).length > 0 && (
           <ul className="mt-1 list-disc pl-5 text-xs">{Object.entries(state.fieldErrors).map(([k, v]) => <li key={k}><b>{k}</b>: {v}</li>)}</ul>
         )}
       </div>}
       {state?.ok && successMessage && state.message && <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.message}</div>}
+      {/* Botão padrão desabilitado: Enter em um campo de texto não envia o formulário (evita aprovar sem querer). */}
+      {noImplicitSubmit && <button type="submit" disabled hidden aria-hidden tabIndex={-1} />}
       {children}
     </form>
     </PendingContext.Provider>
@@ -55,10 +57,10 @@ export function SubmitButton({ children = "Salvar", variant = "primary", classNa
   );
 }
 
-export function Field({ label, name, hint, children, className, required }: { label: string; name?: string; hint?: string; children: ReactNode; className?: string; required?: boolean }) {
+export function Field({ label, name, htmlFor, hint, children, className, required }: { label: string; name?: string; htmlFor?: string; hint?: string; children: ReactNode; className?: string; required?: boolean }) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <label htmlFor={name} className="text-xs font-medium text-slate-700">{label}{required && <span className="text-red-600"> *</span>}</label>
+      <label htmlFor={htmlFor ?? name} className="text-xs font-medium text-slate-700">{label}{required && <span className="text-red-600"> *</span>}</label>
       {children}
       {hint && <p className="text-xs text-slate-500">{hint}</p>}
     </div>
@@ -68,8 +70,10 @@ export function Field({ label, name, hint, children, className, required }: { la
 const inputCls = "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-100";
 
 export function Input({ label, hint, className, required, ...props }: ComponentProps<"input"> & { label?: string; hint?: string }) {
-  const el = <input id={props.name} required={required} className={cn(inputCls, className)} {...props} />;
-  return label ? <Field label={label} name={props.name} hint={hint} required={required}>{el}</Field> : el;
+  const uid = useId();
+  const fid = props.id ?? uid;
+  const el = <input id={fid} required={required} className={cn(inputCls, className)} {...props} />;
+  return label ? <Field label={label} htmlFor={fid} hint={hint} required={required}>{el}</Field> : el;
 }
 
 export function MoneyInput(props: ComponentProps<"input"> & { label?: string; hint?: string }) {
@@ -77,18 +81,22 @@ export function MoneyInput(props: ComponentProps<"input"> & { label?: string; hi
 }
 
 export function Textarea({ label, hint, className, required, ...props }: ComponentProps<"textarea"> & { label?: string; hint?: string }) {
-  const el = <textarea id={props.name} rows={3} required={required} className={cn(inputCls, className)} {...props} />;
-  return label ? <Field label={label} name={props.name} hint={hint} required={required}>{el}</Field> : el;
+  const uid = useId();
+  const fid = props.id ?? uid;
+  const el = <textarea id={fid} rows={3} required={required} className={cn(inputCls, className)} {...props} />;
+  return label ? <Field label={label} htmlFor={fid} hint={hint} required={required}>{el}</Field> : el;
 }
 
 export function Select({ label, hint, options, placeholder, className, required, ...props }: ComponentProps<"select"> & { label?: string; hint?: string; options: { value: string; label: string }[]; placeholder?: string }) {
+  const uid = useId();
+  const fid = props.id ?? uid;
   const el = (
-    <select id={props.name} required={required} className={cn(inputCls, className)} {...props}>
+    <select id={fid} required={required} className={cn(inputCls, className)} {...props}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
-  return label ? <Field label={label} name={props.name} hint={hint} required={required}>{el}</Field> : el;
+  return label ? <Field label={label} htmlFor={fid} hint={hint} required={required}>{el}</Field> : el;
 }
 
 export function Checkbox({ label, ...props }: ComponentProps<"input"> & { label: string }) {

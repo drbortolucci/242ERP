@@ -4,6 +4,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { hmacSha256, safeEqual } from "../auth/crypto";
+import { webhookSecret } from "../config-check";
 import { providerName } from "./env";
 
 export interface CheckoutResult {
@@ -30,7 +31,7 @@ export const simulatedPaymentProvider: PaymentProvider = {
   },
   async cancel() {},
   verifyWebhook(rawBody, signature) {
-    const secret = process.env.PAYMENT_WEBHOOK_SECRET;
+    const secret = webhookSecret("PAYMENT_WEBHOOK_SECRET");
     if (!secret || !signature) return false;
     return safeEqual(hmacSha256(secret, rawBody), signature);
   },
