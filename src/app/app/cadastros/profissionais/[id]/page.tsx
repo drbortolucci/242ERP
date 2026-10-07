@@ -1,3 +1,4 @@
+import { toPlain } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, StatusBadge, Notice } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
@@ -28,7 +29,7 @@ export default async function ProfessionalPage({ params }: { params: Promise<{ i
         actions={canWrite && <ActionButton action={toggleProfessionalAction} fields={{ id, active: p.active ? "false" : "true" }}>{p.active ? "Inativar" : "Reativar"}</ActionButton>} />
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <Card title="Cadastro">{canWrite ? <ProfessionalForm action={updateProfessionalAction} lk={lk} p={p} skillIds={skills.map((s) => s.skillId)} /> : <p className="text-sm">Somente leitura.</p>}</Card>
+          <Card title="Cadastro">{canWrite ? <ProfessionalForm action={updateProfessionalAction} lk={lk} p={toPlain(p)} skillIds={skills.map((s) => s.skillId)} /> : <p className="text-sm">Somente leitura.</p>}</Card>
           <Card title="Férias e afastamentos">
             <DataTable rows={absences} columns={[{ key: "type", label: "Tipo" }, { key: "startDate", label: "Início", render: (a) => formatCivil(a.startDate) }, { key: "endDate", label: "Fim", render: (a) => formatCivil(a.endDate) }, { key: "notes", label: "Obs.", render: (a) => a.notes ?? "—" }]} empty={<p className="text-sm text-slate-500">Nenhuma ausência registrada.</p>} />
             {canWrite && (

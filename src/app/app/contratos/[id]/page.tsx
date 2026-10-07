@@ -1,3 +1,4 @@
+import { toPlain } from "@/lib/utils";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Tabs, Grid, Stat, Badge } from "@/components/ui/page";
@@ -49,7 +50,7 @@ export default async function ContractPage({ params, searchParams }: { params: P
       {tab === "marcos" && <Marcos />}
       {tab === "aditivos" && <Aditivos />}
       {tab === "ocs" && <Ocs />}
-      {tab === "editar" && canWrite && <Card><ContractForm action={A.updateContractAction} c={c} hidden={{ id }} lk={await contractLookups(ctx)} /></Card>}
+      {tab === "editar" && canWrite && <Card><ContractForm action={A.updateContractAction} c={toPlain(c)} hidden={{ id }} lk={await contractLookups(ctx)} /></Card>}
       {tab === "docs" && <Attachments ctx={ctx} entity="Contract" entityId={id} back={`${base}?tab=docs`} canUpload={canWrite} allowClientVisibility />}
     </>
   );

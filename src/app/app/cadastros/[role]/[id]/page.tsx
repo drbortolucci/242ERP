@@ -1,3 +1,4 @@
+import { toPlain } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, Tabs, StatusBadge, Badge } from "@/components/ui/page";
 import { ActionButton } from "@/components/ui/form";
@@ -47,7 +48,7 @@ export default async function PartyPage({ params, searchParams }: { params: Prom
     const users = await prisma.user.findMany({ where: { id: { in: members.map((m) => m.userId) } }, orderBy: { name: "asc" } });
     return (
       <Card title="Dados cadastrais">
-        {canWrite ? <PartyForm party={{ ...party!, address: party!.address as Record<string, string>, customFields: party!.customFields as Record<string, unknown> }} back={role} users={users.map((u) => ({ value: u.id, label: u.name }))} terms={terms.map((t) => ({ value: t.id, label: t.name }))} customFields={cfs} /> : <p className="text-sm">Somente leitura.</p>}
+        {canWrite ? <PartyForm party={{ ...toPlain(party!), address: party!.address as Record<string, string>, customFields: party!.customFields as Record<string, unknown> }} back={role} users={users.map((u) => ({ value: u.id, label: u.name }))} terms={terms.map((t) => ({ value: t.id, label: t.name }))} customFields={cfs} /> : <p className="text-sm">Somente leitura.</p>}
       </Card>
     );
   }
@@ -64,7 +65,7 @@ export default async function PartyPage({ params, searchParams }: { params: Prom
                   <b>{c.name}</b> {c.jobTitle && <span className="text-slate-500">· {c.jobTitle}</span>}
                   <div className="text-xs text-slate-600">{c.email ?? "—"} · {c.phone ?? "—"}</div>
                   <div className="mt-1 flex flex-wrap gap-1">{c.roles.map((r) => <Badge key={r}>{CONTACT_ROLES.find((x) => x.value === r)?.label ?? r}</Badge>)}</div>
-                  {canWrite && <details className="mt-1"><summary className="cursor-pointer text-xs text-brand-700">Editar</summary><ContactForm partyId={id} back={role} roles={CONTACT_ROLES} contact={c} /></details>}
+                  {canWrite && <details className="mt-1"><summary className="cursor-pointer text-xs text-brand-700">Editar</summary><ContactForm partyId={id} back={role} roles={CONTACT_ROLES} contact={toPlain(c)} /></details>}
                 </li>
               ))}
             </ul>
