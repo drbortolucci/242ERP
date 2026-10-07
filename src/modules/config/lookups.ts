@@ -44,5 +44,7 @@ export async function userNameMap(ids: (string | null | undefined)[]) {
   const { prisma } = await import("@/server/db");
   const uniq = [...new Set(ids.filter(Boolean))] as string[];
   if (!uniq.length) return new Map<string, string>();
-  return new Map((await prisma.user.findMany({ where: { id: { in: uniq } } })).map((u) => [u.id, u.name]));
+  const m = new Map((await prisma.user.findMany({ where: { id: { in: uniq } } })).map((u) => [u.id, u.name]));
+  if (uniq.includes("system")) m.set("system", "Sistema (tarefa agendada)");
+  return m;
 }

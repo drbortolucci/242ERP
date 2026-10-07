@@ -99,3 +99,25 @@ Sinais do portfólio: atraso (término planejado vencido ou atividades vencidas)
 | Profissional PJ | pedido `PJ_PROFESSIONAL` apropriado na conta de pessoal; o custo chega ao projeto pelas horas aprovadas × custo/hora — a NF do PJ **não** soma de novo no projeto |
 | Ativos | recebimento de licença/assinatura/equipamento/material cria item de ativo; licenças e assinaturas herdam a vigência do pedido como data de renovação (alerta 60 dias) |
 
+## 9. AMS — SLA e banco de horas (`src/domain/sla.ts`, `src/domain/hour-bank.ts`, `src/modules/ams/*`)
+| Regra | Fórmula / comportamento |
+|-------|-------------------------|
+| Prioridade | matriz impacto × urgência (1 alto … 3 baixo): soma 2 → P1, 3 → P2, 4 → P3, 5–6 → P4 |
+| Minutos úteis | apenas dentro da janela de atendimento do calendário (início/fim em minutos, no fuso do calendário), em dias com horas > 0 e sem feriado |
+| Prazo de resposta | abertura + minutos úteis de resposta da meta (P1…P4) da política do contrato |
+| Primeira resposta | primeiro comentário público da equipe ou primeira mudança de situação pela equipe; violada se após o prazo |
+| Prazo de solução | abertura + minutos úteis de solução + minutos úteis pausados |
+| Pausa | situações configuradas na política (padrão: aguardando cliente/terceiro); ao retomar, soma os minutos úteis da pausa e recalcula o prazo |
+| % consumido | (minutos úteis desde a abertura − pausados) ÷ meta de solução |
+| Escalonamento | nível 1 quando % consumido ≥ limiar da meta (padrão 80%); nível 2 na violação; notifica gestores AMS (sem envio externo em desenvolvimento) |
+| Reabertura | permitida dentro da janela da política (padrão 7 dias) após a solução; conta reaberturas |
+| Encerramento automático | resolvido há mais dias que o configurado (padrão 5) sem manifestação |
+| Franquia mensal | crédito = horas da franquia no 1º dia do mês; vence no fim do mês (não acumula), ou no fim do mês M+N (acumula N meses), ou sem vencimento (pré-pago) |
+| Consumo | horas aprovadas e faturáveis do contrato; cada apontamento consome créditos vigentes na data (mês ≤ data ≤ vencimento), do que vence antes (FIFO) |
+| Excedente | horas sem saldo; valor = horas × tarifa de excedente; política BILL → cobrável; REQUIRE_APPROVAL → aguarda decisão (cobrar/abonar, com justificativa); BLOCK → absorvido (não cobrável) |
+| Expiração | saldo restante de créditos vencidos antes de hoje vira lançamento de expiração (uma vez por crédito) |
+| Saldo baixo | saldo disponível < % configurado da franquia mensal |
+| Idempotência | toda linha do razão tem chave única (franquia por mês, débito por apontamento×crédito, expiração por crédito); a apuração bloqueia o contrato (FOR UPDATE) |
+| Apontamento tardio | aprovado depois da expiração de um crédito não o "ressuscita": consome créditos ainda vigentes na data ou vira excedente |
+| Custo no projeto | horas do chamado também são lançadas no projeto de sustentação do contrato (custo/hora vigente), sem duplicar |
+
