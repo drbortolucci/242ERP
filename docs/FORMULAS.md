@@ -121,3 +121,29 @@ Sinais do portfólio: atraso (término planejado vencido ou atividades vencidas)
 | Apontamento tardio | aprovado depois da expiração de um crédito não o "ressuscita": consome créditos ainda vigentes na data ou vira excedente |
 | Custo no projeto | horas do chamado também são lançadas no projeto de sustentação do contrato (custo/hora vigente), sem duplicar |
 
+## 10. Medição, faturamento e financeiro (`src/domain/billing.ts`, `src/modules/billing/*`, `src/modules/finance/*`)
+| Regra | Fórmula / comportamento |
+|-------|-------------------------|
+| Horas faturáveis | apontamentos aprovados, elegíveis (modelos por hora, sem pendência do cliente) × tarifa snapshot da aprovação; sem tarifa não mede |
+| Marcos | marcos aceitos (valor do marco) |
+| Mensalidade | por competência dentro da vigência: AMS = mensalidade do contrato; alocação = Σ preço unitário dos itens recorrentes; chave `contrato:AAAA-MM` |
+| Excedente AMS | horas de excedente aprovadas × tarifa de excedente |
+| Despesas | despesas aprovadas com valor cobrável do cliente |
+| Trava de medição | (organização, tipo de origem, chave) único no banco — medição simultânea ou repetida falha na trava |
+| Total da medição | Σ itens ativos (inclui ajustes manuais justificados) |
+| Bruto do documento | Σ itens selecionados − desconto |
+| Retenções | para cada regra ativa e vigente cadastrada pela empresa, com base ≥ mínima: arredondar(bruto × alíquota cadastrada, 2) — **o sistema não define alíquotas** |
+| Líquido | bruto − retenções |
+| Parcelas | líquido × % de cada parcela da condição; a última absorve o arredondamento (soma exata); vencimento = emissão + dias |
+| OC do cliente | Σ bruto dos documentos emitidos na OC + novo bruto ≤ valor da OC |
+| Idempotência da emissão | chave única por documento: repetição devolve o mesmo documento |
+| Liquidação | caixa = principal + juros + multa − desconto; saldo do título −= principal; situação PARCIAL/PAGO |
+| Estorno | nova liquidação com valores negativos vinculada à original + movimento bancário inverso; original marcada como estornada; saldo restaurado |
+| Adiantamento | crédito da parte; aplicação reduz o saldo do título sem caixa; adiantamento a fornecedor nasce do pagamento do título de adiantamento do pedido |
+| Compensação | mesma parte e empresa; valor ≤ saldo dos dois títulos; exige permissão `offset.approve` e motivo |
+| Aging | dias de atraso = hoje − vencimento: a vencer, 1–30, 31–60, 61–90, > 90 |
+| Saldo bancário | saldo de abertura + Σ movimentos até a data |
+| Conciliação | 1 linha de extrato ↔ 1 movimento do livro, mesmo valor e conta; índice único impede dupla contagem; diferenças (tarifas) viram lançamento próprio |
+| Fluxo de caixa | realizado = movimentos bancários até hoje; previsto = títulos em aberto por vencimento (vencidos entram hoje) + compromissos de compra não faturados (fim da vigência ou pedido + 30 dias) |
+| Comissões | base INVOICE = bruto do documento; base RECEIPT = principal recebido; cancelamento/estorno gera reversão vinculada |
+

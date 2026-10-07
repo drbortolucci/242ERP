@@ -49,3 +49,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Apuração automática na aprovação de horas e diária pelo worker; varredura de SLA a cada 5 minutos; contexto de sistema auditado para tarefas agendadas.
 - Horas apontadas no chamado compõem o custo do projeto de sustentação do contrato.
 
+## [0.6.0] — Etapa 6: Monetização e financeiro
+### Adicionado
+- Motor de medição com origem rastreável (horas, marcos, mensalidades de alocação e AMS, excedente AMS, despesas, ajustes) e trava única por origem no banco; aprovação interna (SoD) e do cliente.
+- Documento de cobrança com faturamento parcial, desconto, OC do cliente com controle de saldo, retenções configuradas pela empresa, parcelas pela condição de pagamento, PDF interno (não fiscal), cancelamento controlado e comissões por faturamento.
+- Adaptador de NFS-e com provedor simulado, idempotência, tentativas e webhook autenticado.
+- Contas a receber/pagar: títulos avulsos, aprovação de CP com SoD, liquidação parcial com juros/multa/desconto, estorno vinculado, adiantamentos e aplicação, compensação autorizada, aging, contas recorrentes (job), comissões por recebimento.
+- Tesouraria: saldos, transferências, importação de extrato CSV/OFX sem duplicidade, conciliação 1:1, lançamento de tarifas, fluxo de caixa realizado e previsto.
+- Job `contracts.alerts` (agendado e antes sem manipulador) passa a notificar os responsáveis.
+

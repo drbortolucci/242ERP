@@ -4,3 +4,4 @@ import "../contracts/service";
 import "../expenses/service";
 import "../procurement/service";
 export {};
+import "../billing/measurement";

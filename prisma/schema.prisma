@@ -1948,6 +1948,8 @@ model MeasurementItem {
   unitPrice         Decimal  @db.Decimal(18, 4)
   amount            Decimal  @db.Decimal(18, 2)
   serviceId         String?
+  // Projeto de origem (apropriação de receita por projeto na controladoria)
+  projectId         String?
   billingDocumentId String?
   status            String   @default("ACTIVE") // ACTIVE | INVOICED | REMOVED
   createdAt         DateTime @default(now()) @db.Timestamptz(3)
