@@ -26,3 +26,16 @@ test("controladoria navega DRE, razão com origem, P&L de projeto, orçamentos, 
   await expect(page.getByRole("button", { name: "Reabrir" }).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("painel mostra blocos conforme o perfil e cada indicador leva à origem", async ({ page }) => {
+  await loginAs(page, "diretor@demo.local");
+  await page.goto("/app");
+  for (const t of ["Resultado (gerencial)", "Caixa e títulos", "Comercial", "Projetos"]) await expect(page.getByRole("heading", { name: t })).toBeVisible();
+  await page.getByRole("link", { name: /A receber vencido/ }).click();
+  await expect(page.getByRole("heading", { name: "Contas a receber" })).toBeVisible();
+  await page.goto("/login");
+  await loginAs(page, "consultor@demo.local");
+  await page.goto("/app");
+  await expect(page.getByRole("heading", { name: "Minha semana" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Resultado (gerencial)" })).toHaveCount(0);
+});

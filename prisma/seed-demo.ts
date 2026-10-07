@@ -137,6 +137,7 @@ export async function seedFoundation(password: string): Promise<DemoContext> {
   // Portal do cliente (Alfa)
   users.portalAlfa = await addMember(org.id, "cliente@alfa.local", "Aprovador Alfa", ["client_approver"], pw, { kind: "CLIENT", partyId: parties.Alfa });
   users.portalBeta = await addMember(org.id, "cliente@beta.local", "Usuário Beta", ["client_user"], pw, { kind: "CLIENT", partyId: parties.Beta });
+  users.portalGama = await addMember(org.id, "cliente@gama.local", "Aprovadora Gama", ["client_approver"], pw, { kind: "CLIENT", partyId: parties.Gama });
 
   await saveChecklist(admin, ["cnpj", "municipal", "bank"], true);
 
