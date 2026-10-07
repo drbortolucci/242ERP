@@ -147,3 +147,24 @@ Sinais do portfólio: atraso (término planejado vencido ou atividades vencidas)
 | Fluxo de caixa | realizado = movimentos bancários até hoje; previsto = títulos em aberto por vencimento (vencidos entram hoje) + compromissos de compra não faturados (fim da vigência ou pedido + 30 dias) |
 | Comissões | base INVOICE = bruto do documento; base RECEIPT = principal recebido; cancelamento/estorno gera reversão vinculada |
 
+## 11. Controladoria (`src/modules/controlling/*`)
+| Regra | Fórmula / comportamento |
+|-------|-------------------------|
+| Custo de pessoal no projeto | Σ horas aprovadas × custo/hora snapshot → "Custo de profissionais internos alocados" (projeto, contrato, profissional) |
+| Absorção | o mesmo valor, negativo, em "Pessoal absorvido por projetos" no centro de custo do profissional — folha (+) e absorção (−) evitam duplicidade; o saldo é a ociosidade |
+| Folha | importação consolidada por centro de custo (CSV) em "Pessoal (folha)"; NF de PJ entra na conta do pedido (pessoal) e o custo no projeto vem das horas |
+| Terceiros | documentos de fornecedor aprovados, na conta do pedido (padrão: terceiros), no projeto/CC do pedido |
+| Receita — horas/medição | itens de medição aprovados na competência da medição |
+| Receita — marcos | valor do marco no mês do aceite |
+| Receita — linear | mensalidade (ou valor do contrato ÷ meses de vigência) por competência |
+| Receita — % de conclusão | valor do contrato (ou receita da linha de base vigente) × mín(1, horas aprovadas acumuladas ÷ esforço da linha de base) − receita já reconhecida (lança a diferença) |
+| Reembolso de despesas | itens de despesa medidos → "Reembolso de despesas cobradas" |
+| Dedução gerencial | receita × alíquota gerencial informada no contrato (configuração da empresa, não regra fiscal) |
+| Resultado financeiro | juros/multas recebidos e descontos obtidos (receita financeira); descontos concedidos e juros/multas pagos (despesa financeira) |
+| Idempotência | chave única por lançamento; reprocessar lança só o que falta; origem cancelada gera estorno vinculado |
+| Rateio | origem (conta + CC) × peso de cada destino ÷ Σ pesos; resto na última parcela; origem recebe −total → soma após = soma antes; uma execução por regra/competência; estorno por registros inversos; alterar a regra cria nova versão |
+| DRE | Receita bruta − deduções = receita líquida; − custos diretos = margem de contribuição; − despesas operacionais (inclui folha, absorção e rateios) = resultado operacional; ± financeiro = resultado gerencial |
+| Orçado × realizado | Σ linhas do orçamento aprovado × Σ lançamentos do razão por conta no exercício; variação = realizado − orçado |
+| P&L do projeto | original (linha de base v1) × revisado (vigente) × realizado (razão: receita líquida, pessoal, terceiros, despesas) × previsto (realizado + compromissos + ETC); rateios exibidos à parte |
+| Fechamento | só meses anteriores ao corrente; sincroniza o razão; pendências exigem justificativa; período fechado recusa operações com data no mês; reabertura exige `period.reopen` e justificativa (≥ 10 caracteres), auditada |
+

@@ -58,3 +58,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Tesouraria: saldos, transferências, importação de extrato CSV/OFX sem duplicidade, conciliação 1:1, lançamento de tarifas, fluxo de caixa realizado e previsto.
 - Job `contracts.alerts` (agendado e antes sem manipulador) passa a notificar os responsáveis.
 
+## [0.7.0] — Etapa 7: Controladoria
+### Adicionado
+- Razão gerencial idempotente por empresa/competência: custo de horas com absorção de pessoal (sem duplicar a folha), terceiros, despesas, títulos recorrentes, receita por método do contrato (medição, marcos, linear, % de conclusão por horas), deduções gerenciais, resultado financeiro, comissões, folha importada; estorno automático de origens canceladas; job diário.
+- Rateios versionados (percentual fixo, horas, receita) com soma preservada, execução única por competência e estorno.
+- Orçamentos e forecasts versionados, orçado × realizado.
+- DRE gerencial com filtros (empresa, centro de custo, unidade) e navegação até o razão e a origem.
+- P&L de projetos: original × revisado × realizado × previsto.
+- Fechamento com checklist de pendências, bloqueio de operações e reabertura autorizada e auditada; exportação contábil (CSV); registro de aprovação das regras de reconhecimento.
+

@@ -4,3 +4,4 @@ import "@/modules/ams/jobs";
 import "@/modules/billing/fiscal";
 import "@/modules/finance/jobs";
 import "@/modules/contracts/jobs";
+import "@/modules/controlling/jobs";

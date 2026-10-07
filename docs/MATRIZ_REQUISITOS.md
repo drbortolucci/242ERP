@@ -16,7 +16,7 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC08 | Apontar e aprovar horas | Fluxo rascunho→enviado→aprovado→(cliente)→elegível | 3 | ✅ | `operations.test.ts` (fluxo completo, SoD, cliente, ajuste); E2E `04-operations.spec.ts` |
 | AC09 | Registrar despesa reembolsável | Separa devido ao profissional e cobrável do cliente | 3 | ✅ | `operations.test.ts` (custo × devido ao profissional × cobrável; conta a pagar de reembolso) |
 | AC10 | Executar compra de serviço até pagamento | Requisição→cotação→PC→aceite→NF fornecedor→CP→pagamento | 4/6 | ✅ | `procurement.test.ts` (até a CP) + `billing-finance.test.ts` (aprovação de CP com SoD e liquidação); seed paga as NFs de fornecedores e aplica o adiantamento do pedido |
-| AC11 | Apropriar compras e despesas no projeto | P&L do projeto inclui terceiros e despesas sem duplicar | 4/7 | 🟡 | Projeto: `procurement.test.ts` (terceiros pela NF aprovada, PJ pelas horas, encerrado libera compromisso) e `operations.test.ts` (despesas); razão gerencial na Etapa 7 |
+| AC11 | Apropriar compras e despesas no projeto | P&L do projeto inclui terceiros e despesas sem duplicar | 4/7 | ✅ | `procurement.test.ts` (analytics) e `controlling.test.ts` (razão: horas + absorção, NF de terceiros com estorno ao cancelar, P&L do projeto) |
 | AC12 | Gerar medição com origem rastreável | Cada item aponta origem (tipo + id) | 6 | ✅ | `billing-finance.test.ts`; tela da medição com link para a origem |
 | AC13 | Faturar parcialmente sem duplicar itens | Itens já faturados/medidos não reaparecem; unicidade no banco | 6 | ✅ | `billing-finance.test.ts` (parcial, repetição idempotente, item já faturado recusado, cancelamento devolve itens) |
 | AC14 | Criar títulos financeiros | Parcelas conforme condição de pagamento, soma exata | 6 | ✅ | `billing.test.ts` (soma exata) e `billing-finance.test.ts` (30/60) |
@@ -25,10 +25,10 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC17 | Abrir chamado AMS e medir SLA | Prazos em horário comercial, pausa, violação | 5 | ✅ | `tests/unit/ams.test.ts` (minutos úteis, fuso, feriado, fim de semana) e `tests/integration/ams.test.ts` (pausa, violação, escalonamento, reabertura pelo cliente); E2E `06-ams.spec.ts` |
 | AC18 | Consumir franquia e calcular excedente | Razão FIFO de horas, excedente valorizado | 5 | ✅ | `ams.test.ts` (FIFO por vencimento, excedente com decisão, expiração, idempotência, concorrência, consumo na aprovação de horas); cobrança do excedente na Etapa 6 |
 | AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | ✅ | Cliente (Etapa 2) e fornecedor (cadastro, conformidade, profissionais, pedidos, cotações, projetos, aceites, documentos, títulos, adiantamentos, pendências, avaliações); E2E `05-procurement.spec.ts` |
-| AC20 | Comparar P&L original, revisado, realizado e previsto | Linha de base v1 x vigente x realizado x EAC | 7 | ⏳ | |
-| AC21 | Validar rateios sem duplicar custos | Soma após rateio = soma antes | 7 | ⏳ | |
-| AC22 | Fechar período e impedir alterações indevidas | Operações na competência fechada são recusadas | 7 | ⏳ | |
-| AC23 | Reabrir período com autorização e auditoria | Exige permissão + justificativa; auditado | 7 | ⏳ | |
+| AC20 | Comparar P&L original, revisado, realizado e previsto | Linha de base v1 x vigente x realizado x EAC | 7 | ✅ | `controlling.test.ts` (`projectPl`); tela `/app/controladoria/pl/[id]`; E2E `08-controlling.spec.ts` |
+| AC21 | Validar rateios sem duplicar custos | Soma após rateio = soma antes | 7 | ✅ | `controlling.test.ts` (percentual e horas, resto exato, execução única, estorno, versão) |
+| AC22 | Fechar período e impedir alterações indevidas | Operações na competência fechada são recusadas | 7 | ✅ | `controlling.test.ts` (razão e títulos recusados no período fechado) |
+| AC23 | Reabrir período com autorização e auditoria | Exige permissão + justificativa; auditado | 7 | ✅ | `controlling.test.ts` (sem permissão/justificativa recusa; auditoria registrada) |
 | AC24 | Restringir portal ao cliente autorizado | Cliente vê só seus dados, sem custos/comentários internos | 8 | ⏳ | |
 | AC25 | Impedir acesso entre organizações | Cliente Prisma escopado | 1 | ✅ | `tenant-isolation.test.ts`; exportação isolada em `foundation.test.ts` |
 | AC26 | Respeitar escopos de empresa | Usuário com escopo não lê/grava outra empresa | 1 | ✅ | `tenant-isolation.test.ts` (escopo de empresa leitura/escrita) |
@@ -64,6 +64,6 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | Fiscal | Adaptador NFS-e + simulado | 🔌 | Adaptador, idempotência, tentativas e webhook HMAC implementados; provedor simulado em dev/teste. Provedor real, códigos de serviço e regras de retenção dependem da empresa e do responsável fiscal |
 | Financeiro | CR/CP, liquidações, estornos, adiantamentos, compensações, aging | ✅ | Inclui contas recorrentes e comissões por faturamento/recebimento |
 | Tesouraria | Contas, transferências, extratos, conciliação, fluxo de caixa | ✅ | Importação CSV/OFX; 🔌 integração bancária automática (API/CNAB) pendente |
-| Controladoria | Razão, orçamento, rateio, DRE, P&L, fechamento | ⏳ | |
+| Controladoria | Razão, orçamento, rateio, DRE, P&L, fechamento | ✅ | Razão idempotente (job diário), folha, rateios versionados, orçamento/forecast, DRE com filtros e navegação até a origem, P&L de projetos, fechamento/reabertura, exportação contábil CSV, aprovação das regras de reconhecimento. Não substitui a contabilidade oficial |
 | Portais | Cliente e consultor | ⏳ | |
 | Dashboards | Por perfil, rastreáveis | ⏳ | |
