@@ -2,4 +2,5 @@
 import "../proposals/service";
 import "../contracts/service";
 import "../expenses/service";
+import "../procurement/service";
 export {};

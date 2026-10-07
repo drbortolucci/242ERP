@@ -23,7 +23,9 @@ export async function projectAnalytics(ctx: Ctx, projectId: string) {
   ]);
   const original = baselines[0] ?? null;
   const current = baselines[baselines.length - 1] ?? null;
-  const supplierInvoices = pos.length ? await ctx.db.supplierInvoice.findMany({ where: { purchaseOrderId: { in: pos.map((x) => x.id) }, status: "APPROVED" } }) : [];
+  // Pedidos de profissional PJ não entram como terceiros: o custo chega ao projeto pelas horas apontadas (evita duplicidade)
+  const thirdPartyPos = pos.filter((x) => x.kind !== "PJ_PROFESSIONAL");
+  const supplierInvoices = thirdPartyPos.length ? await ctx.db.supplierInvoice.findMany({ where: { purchaseOrderId: { in: thirdPartyPos.map((x) => x.id) }, status: "APPROVED" } }) : [];
 
   const actualHours = qty(sum(entries.map((e) => e.hours)));
   const laborCost = money(sum(entries.map((e) => e.costAmount ?? 0)));
@@ -31,8 +33,8 @@ export async function projectAnalytics(ctx: Ctx, projectId: string) {
   const expenseCost = money(sum(expenses.map((e) => e.amount)));
   const actualCost = money(sum([laborCost, thirdPartyCost, expenseCost]));
   // Comprometido não realizado = valor dos pedidos aprovados ainda não faturados pelo fornecedor
-  const committed = money(sum(pos.map((po) => dec(po.totalAmount).minus(sum(supplierInvoices.filter((i) => i.purchaseOrderId === po.id).map((i) => i.amount))))).toFixed(2));
-  const committedNotRealized = committed.lt(0) ? money(0) : committed;
+  // (pedido encerrado libera o saldo; saldo de cada pedido nunca é negativo)
+  const committedNotRealized = money(sum(thirdPartyPos.filter((po) => po.status !== "CLOSED").map((po) => { const open = dec(po.totalAmount).minus(sum(supplierInvoices.filter((i) => i.purchaseOrderId === po.id).map((i) => i.amount))); return open.gt(0) ? open : 0; })));
 
   const workTasks = tasks.filter((t) => t.kind !== "PHASE");
   const progress = progressPct(p.progressMethod as ProgressMethod, {

@@ -15,8 +15,8 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC07 | Planejar recursos e identificar conflitos | Sobrealocação detectada em horas; exceção exige permissão e justificativa | 3 | ✅ | `operations.test.ts` (conflito, exceção autorizada com justificativa) e `tests/unit/operations.test.ts` |
 | AC08 | Apontar e aprovar horas | Fluxo rascunho→enviado→aprovado→(cliente)→elegível | 3 | ✅ | `operations.test.ts` (fluxo completo, SoD, cliente, ajuste); E2E `04-operations.spec.ts` |
 | AC09 | Registrar despesa reembolsável | Separa devido ao profissional e cobrável do cliente | 3 | ✅ | `operations.test.ts` (custo × devido ao profissional × cobrável; conta a pagar de reembolso) |
-| AC10 | Executar compra de serviço até pagamento | Requisição→cotação→PC→aceite→NF fornecedor→CP→pagamento | 4/6 | ⏳ | |
-| AC11 | Apropriar compras e despesas no projeto | P&L do projeto inclui terceiros e despesas sem duplicar | 4/7 | ⏳ | |
+| AC10 | Executar compra de serviço até pagamento | Requisição→cotação→PC→aceite→NF fornecedor→CP→pagamento | 4/6 | 🟡 | Até a conta a pagar: `procurement.test.ts` (ciclo completo, SoD, divergência, duplicidade) e E2E `05-procurement.spec.ts`; aprovação financeira e pagamento na Etapa 6 |
+| AC11 | Apropriar compras e despesas no projeto | P&L do projeto inclui terceiros e despesas sem duplicar | 4/7 | 🟡 | Projeto: `procurement.test.ts` (terceiros pela NF aprovada, PJ pelas horas, encerrado libera compromisso) e `operations.test.ts` (despesas); razão gerencial na Etapa 7 |
 | AC12 | Gerar medição com origem rastreável | Cada item aponta origem (tipo + id) | 6 | ⏳ | |
 | AC13 | Faturar parcialmente sem duplicar itens | Itens já faturados/medidos não reaparecem; unicidade no banco | 6 | ⏳ | |
 | AC14 | Criar títulos financeiros | Parcelas conforme condição de pagamento, soma exata | 6 | ⏳ | |
@@ -24,7 +24,7 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC16 | Conciliar movimento bancário | Linha de extrato ↔ movimento do livro, sem dupla contagem | 6 | ⏳ | |
 | AC17 | Abrir chamado AMS e medir SLA | Prazos em horário comercial, pausa, violação | 5 | ⏳ | |
 | AC18 | Consumir franquia e calcular excedente | Razão FIFO de horas, excedente valorizado | 5 | ⏳ | |
-| AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | 🟡 | Visão 360° do cliente ✅; do fornecedor na Etapa 4 |
+| AC19 | Visões 360° de cliente e fornecedor | Páginas consolidadas com navegação até origem | 2/4 | ✅ | Cliente (Etapa 2) e fornecedor (cadastro, conformidade, profissionais, pedidos, cotações, projetos, aceites, documentos, títulos, adiantamentos, pendências, avaliações); E2E `05-procurement.spec.ts` |
 | AC20 | Comparar P&L original, revisado, realizado e previsto | Linha de base v1 x vigente x realizado x EAC | 7 | ⏳ | |
 | AC21 | Validar rateios sem duplicar custos | Soma após rateio = soma antes | 7 | ⏳ | |
 | AC22 | Fechar período e impedir alterações indevidas | Operações na competência fechada são recusadas | 7 | ⏳ | |
@@ -58,7 +58,7 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | Recursos | Alocações, conflitos, capacidade | ✅ | Grade semanal/mensal em horas; solicitações e sugestões |
 | Horas | Fluxo, aprovações, ajustes | ✅ | Aprovação do cliente no portal na Etapa 8 (registro interno já disponível) |
 | Despesas | Despesas, adiantamentos, reembolso | ✅ | Devolução de saldo de adiantamento registrada (sem título a receber do profissional) |
-| Suprimentos | Ciclo completo, 3 vias, ativos, avaliação | ⏳ | |
+| Suprimentos | Ciclo completo, 3 vias, ativos, avaliação | ✅ | Requisição, cotações e mapa comparativo, verificação de orçamento, pedidos (avulsa, subcontratação, PJ, recorrente, licença), aceites/devoluções, conferência de 3 vias, divergência com SoD, ativos e renovações, conformidade e avaliação de fornecedores |
 | AMS | Chamados, SLA, franquias | ⏳ | |
 | Faturamento | Motor de medição, cobrança, parcial, retenções | ⏳ | |
 | Fiscal | Adaptador NFS-e + simulado | ⏳ | 🔌 provedor real e validação fiscal |

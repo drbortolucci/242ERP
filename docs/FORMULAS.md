@@ -62,8 +62,8 @@ Base por regra: contratação (valor do contrato na ativação), faturamento (va
 | Avanço — marcos | Σ valor dos marcos aceitos ÷ Σ valor dos marcos |
 | Avanço — peso | Σ peso das atividades concluídas ÷ Σ pesos |
 | Avanço — manual | informado; **não habilita EVM** |
-| Custo realizado (AC) | Σ custo snapshot das horas aprovadas + NF de fornecedores aprovadas do projeto + despesas aprovadas |
-| Comprometido não realizado | Σ (valor do pedido de compra aprovado − NF aprovadas desse pedido) |
+| Custo realizado (AC) | Σ custo snapshot das horas aprovadas + NF de fornecedores aprovadas do projeto (exceto pedidos de profissional PJ) + despesas aprovadas |
+| Comprometido não realizado | Σ máx(0, valor do pedido aprovado − NF aprovadas desse pedido), excluindo pedidos encerrados e pedidos de profissional PJ |
 | BAC | custo total da linha de base vigente |
 | PV | Σ custo planejado mensal da linha de base até o mês corrente |
 | EV | BAC × avanço% |
@@ -80,3 +80,22 @@ Sinais do portfólio: atraso (término planejado vencido ou atividades vencidas)
 - Snapshot na aprovação: custo/hora vigente (`costRate`, `costAmount = horas × custo`) e tarifa contratual vigente (`sellRate`).
 - Hora extra: total do dia > limite configurado. Limite diário, frações de 15 minutos e períodos fechados validados no servidor.
 - Profissionais PJ/parceiros: custo do projeto reconhecido pelas horas aprovadas × custo/hora contratado; a nota do PJ liquida a obrigação (não gera custo em duplicidade).
+
+## 8. Suprimentos (`src/domain/three-way-match.ts`, `src/modules/procurement/service.ts`)
+| Regra | Fórmula / comportamento |
+|-------|-------------------------|
+| Estimativa da requisição | Σ quantidade × preço unitário estimado |
+| Verificação de orçamento | referência = projeto (custo de terceiros da linha de base vigente) ou centro de custo/conta (orçamento — Etapa 7); disponível = orçado − Σ pedidos aprovados/em aprovação da mesma referência; **alerta**, não bloqueio (a alçada decide) |
+| Mapa comparativo | menor total, menor prazo e menor preço unitário por item (`compareQuotations`) |
+| Total do pedido | Σ arredondar(quantidade × preço unitário, 2) por linha |
+| Recebimento/aceite | valor = quantidade × preço unitário; não pode exceder saldo do item × (1 + tolerância%); devolução limitada ao recebido não faturado |
+| Faturável pelo fornecedor | recebido/aceito − já faturado |
+| Conferência de 3 vias | conferido se valor ≤ faturável × (1 + tolerância%) **e** valor ≤ saldo do pedido (total − faturado) **e** existe recebimento; caso contrário DIVERGENTE |
+| Divergência | aceite exige `purchase.approve`, justificativa e pessoa diferente de quem emitiu o pedido (SoD); ou recusa (cancelamento) |
+| Conta a pagar | gerada só após conferência/aceite, com status "aguardando aprovação financeira"; adiantamento do pedido gera título próprio na aprovação |
+| Duplicidade | (organização, fornecedor, número do documento) único no banco |
+| Compromisso aberto | valor do pedido aprovado − faturado (usado no fluxo de caixa previsto e no P&L do projeto) |
+| Encerramento de saldo | pedido encerrado libera o compromisso remanescente |
+| Profissional PJ | pedido `PJ_PROFESSIONAL` apropriado na conta de pessoal; o custo chega ao projeto pelas horas aprovadas × custo/hora — a NF do PJ **não** soma de novo no projeto |
+| Ativos | recebimento de licença/assinatura/equipamento/material cria item de ativo; licenças e assinaturas herdam a vigência do pedido como data de renovação (alerta 60 dias) |
+
