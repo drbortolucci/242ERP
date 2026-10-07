@@ -5,6 +5,7 @@
 import { drain, enqueue } from "./queue";
 import "./handlers";
 import { logger } from "../logger";
+import { assertConfig } from "../config-check";
 
 async function schedulePeriodic() {
   const now = new Date();
@@ -19,6 +20,7 @@ async function schedulePeriodic() {
 }
 
 async function loop() {
+  assertConfig();
   logger.info("worker.start", {});
   for (;;) {
     try {

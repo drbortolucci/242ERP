@@ -101,6 +101,7 @@ export const NAV: NavGroup[] = [
       { label: "Usuários e perfis", href: "/app/admin/usuarios", perm: "users.manage" },
       { label: "Assinatura e plano", href: "/app/admin/assinatura", perm: "org.manage" },
       { label: "Auditoria", href: "/app/admin/auditoria", perm: "audit.view" },
+      { label: "Chaves de API", href: "/app/admin/api", perm: "settings.manage", module: "api" },
       { label: "Privacidade e dados", href: "/app/admin/dados", perm: ["data.export", "support.grant"] },
     ],
   },

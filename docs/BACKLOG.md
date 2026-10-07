@@ -48,3 +48,20 @@ A situação detalhada e as evidências estão em [MATRIZ_REQUISITOS.md](MATRIZ_
 
 ## Etapa 9 — Integrações e produção
 - Assinatura SaaS (provedor + webhooks), adaptadores, API externa, observabilidade, checklist de produção
+
+## Situação (versão 1.0.0)
+Etapas 1 a 9 implementadas e validadas (ver matriz). Itens remanescentes:
+
+| Item | Tipo |
+|------|------|
+| Cenários de fluxo de caixa (otimista/pessimista) | ⏳ Pendente |
+| P&L por cliente/contrato na interface (o serviço de DRE já aceita filtro por cliente) | ⏳ Pendente |
+| SSO corporativo (OIDC/SAML) | ⏳ Pendente |
+| Política de conteúdo (CSP) estrita | ⏳ Pendente |
+| Provedor real de cobrança de assinaturas SaaS | 🔌 Externo |
+| Provedor de NFS-e homologado + validação do responsável fiscal | 🔌 Externo |
+| E-mail transacional real | 🔌 Externo |
+| Assinatura eletrônica certificada | 🔌 Externo |
+| Integração bancária automática (API/CNAB) | 🔌 Externo |
+| Conversão cambial (multimoeda) | ⏳ Pendente |
+

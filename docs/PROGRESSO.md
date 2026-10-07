@@ -3,8 +3,8 @@
 Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada etapa.
 
 ## Estado atual
-- Etapa em andamento: **Etapa 9 — Integrações e produção**
-- PRs #1 e #2 integrados em `main`; Etapas 3 a 8 (PRs #3–#8, empilhados) aguardando integração.
+- **Versão 1.0.0** — Etapas 1 a 9 concluídas.
+- PRs #1 e #2 integrados em `main`; Etapas 3 a 9 (PRs #3–#9, empilhados) aguardando integração, nesta ordem.
 
 ## Dependências externas e decisões
 | Item | Tipo | Situação |
@@ -54,6 +54,10 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - Entregue: ver CHANGELOG 0.8.0. Testes: 86 unitários/integração + 15 E2E.
 - Usuários de portal na demonstração: `cliente@alfa.local` (aprovador), `cliente@gama.local` (aprovadora; T&M com aprovação de horas), `cliente@beta.local` (chamados).
 
+## Etapa 9 — Integrações e produção (concluída)
+- Entregue: ver CHANGELOG 1.0.0. Testes: 89 unitários/integração + 16 E2E.
+- Pendências e dependências externas consolidadas em `BACKLOG.md` (seção "Situação") e `INTEGRACOES.md`.
+
 ## Como continuar
 1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).
 2. `npm run db:reset` (recria banco *_dev local e carrega a demonstração).
@@ -68,3 +72,4 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 - 2026-10-07 — Etapa 6 concluída (faturamento e financeiro) — PR `etapa-6-financeiro`.
 - 2026-10-07 — Etapa 7 concluída (controladoria) — PR `etapa-7-controladoria`.
 - 2026-10-07 — Etapa 8 concluída (portais e dashboards) — PR `etapa-8-portais`.
+- 2026-10-07 — Etapa 9 concluída (integrações e produção) — PR `etapa-9-producao`; versão 1.0.0.

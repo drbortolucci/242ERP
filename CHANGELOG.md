@@ -74,3 +74,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - PDF do documento de cobrança acessível ao cliente apenas para a própria parte.
 - Painel inicial por perfil com indicadores rastreáveis até a tela de origem.
 
+## [1.0.0] — Etapa 9: Integrações e produção
+### Adicionado
+- API pública v1 por chave (hash SHA-256, escopos, limite de taxa por chave, auditoria com a chave como ator): clientes, contratos, projetos, chamados (leitura e abertura) e títulos a receber.
+- Tela de chaves de API (exibição única do segredo, revogação).
+- Verificação de configuração na inicialização da aplicação e do worker (bloqueia segredo fraco/de exemplo e URL sem HTTPS em produção); avisos expostos em `/api/health`.
+- Cabeçalho `Strict-Transport-Security`.
+- Documentação: modelo de dados, guia de configuração, fluxos operacionais, integrações/API/limitações, implantação/backup/checklist de produção.
+
