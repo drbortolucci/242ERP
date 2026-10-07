@@ -11,10 +11,10 @@ Legenda: ✅ Implementado e validado · 🟡 Implementado com restrições · �
 | AC03 | Criar e configurar empresas | Onboarding com CNPJ validado, filiais, unidades, centros de custo, contas | 1 | ✅ | Onboarding E2E; CNPJ validado; filial com mesma raiz |
 | AC04 | Cadastrar cliente e oportunidade | CRUD + funil | 2 | ✅ | `commercial.test.ts`; E2E `03-commercial.spec.ts` |
 | AC05 | Criar e aprovar proposta | Versões, cálculo, alçada, SoD | 2 | ✅ | Alçada por desconto + SoD em `commercial.test.ts`; E2E cria e submete proposta |
-| AC06 | Gerar pedido, contrato e projeto | A partir da proposta aceita, com rastreabilidade | 2/3 | 🟡 | Pedido e contrato ✅ (`commercial.test.ts`); geração de projeto na Etapa 3 |
-| AC07 | Planejar recursos e identificar conflitos | Sobrealocação detectada em horas; exceção exige permissão e justificativa | 3 | ⏳ | |
-| AC08 | Apontar e aprovar horas | Fluxo rascunho→enviado→aprovado→(cliente)→elegível | 3 | ⏳ | |
-| AC09 | Registrar despesa reembolsável | Separa devido ao profissional e cobrável do cliente | 3 | ⏳ | |
+| AC06 | Gerar pedido, contrato e projeto | A partir da proposta aceita, com rastreabilidade | 2/3 | ✅ | `commercial.test.ts` (pedido/contrato) e `operations.test.ts` (projeto a partir do contrato com linha de base) |
+| AC07 | Planejar recursos e identificar conflitos | Sobrealocação detectada em horas; exceção exige permissão e justificativa | 3 | ✅ | `operations.test.ts` (conflito, exceção autorizada com justificativa) e `tests/unit/operations.test.ts` |
+| AC08 | Apontar e aprovar horas | Fluxo rascunho→enviado→aprovado→(cliente)→elegível | 3 | ✅ | `operations.test.ts` (fluxo completo, SoD, cliente, ajuste); E2E `04-operations.spec.ts` |
+| AC09 | Registrar despesa reembolsável | Separa devido ao profissional e cobrável do cliente | 3 | ✅ | `operations.test.ts` (custo × devido ao profissional × cobrável; conta a pagar de reembolso) |
 | AC10 | Executar compra de serviço até pagamento | Requisição→cotação→PC→aceite→NF fornecedor→CP→pagamento | 4/6 | ⏳ | |
 | AC11 | Apropriar compras e despesas no projeto | P&L do projeto inclui terceiros e despesas sem duplicar | 4/7 | ⏳ | |
 | AC12 | Gerar medição com origem rastreável | Cada item aponta origem (tipo + id) | 6 | ⏳ | |
@@ -54,10 +54,10 @@ As linhas abaixo são atualizadas a cada etapa (ver também `PROGRESSO.md`).
 | CRM | Leads, oportunidades, kanban, atividades, indicadores | ✅ | Multi-serviço; conversão de lead; fórmulas em FORMULAS.md |
 | Propostas | Versionamento, cálculo, alçadas, PDF, aceite | ✅ | PDF interno; aceite registrado com comprovação (🔌 assinatura certificada externa) |
 | Contratos | Pedido, contrato, tarifas, OC, aditivos, mudança de escopo, alertas, comissões | ✅ | Comissão por faturamento/recebimento é acionada na Etapa 6 |
-| Projetos | WBS, linha de base, riscos, status, ETC/EAC, portfólio, Gantt | ⏳ | |
-| Recursos | Alocações, conflitos, capacidade | ⏳ | |
-| Horas | Fluxo, aprovações, ajustes | ⏳ | |
-| Despesas | Despesas, adiantamentos, reembolso | ⏳ | |
+| Projetos | WBS, linha de base, riscos, status, ETC/EAC, portfólio, Gantt | ✅ | EVM só com dados objetivos; encerramentos separados |
+| Recursos | Alocações, conflitos, capacidade | ✅ | Grade semanal/mensal em horas; solicitações e sugestões |
+| Horas | Fluxo, aprovações, ajustes | ✅ | Aprovação do cliente no portal na Etapa 8 (registro interno já disponível) |
+| Despesas | Despesas, adiantamentos, reembolso | ✅ | Devolução de saldo de adiantamento registrada (sem título a receber do profissional) |
 | Suprimentos | Ciclo completo, 3 vias, ativos, avaliação | ⏳ | |
 | AMS | Chamados, SLA, franquias | ⏳ | |
 | Faturamento | Motor de medição, cobrança, parcial, retenções | ⏳ | |

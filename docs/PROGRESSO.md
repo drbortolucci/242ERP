@@ -3,8 +3,8 @@
 Este arquivo permite continuar o trabalho em outra sessão. Atualizado a cada etapa.
 
 ## Estado atual
-- Etapa em andamento: **Etapa 3 — Operação**
-- Branches: `etapa-1-fundacao` (PR #1), `etapa-2-comercial` (PR #2, empilhado sobre a etapa 1)
+- Etapa em andamento: **Etapa 4 — Suprimentos**
+- PRs #1 e #2 integrados em `main`; Etapa 3 em `etapa-3-operacao`.
 
 ## Dependências externas e decisões
 | Item | Tipo | Situação |
@@ -28,6 +28,10 @@ Nenhuma dessas dependências bloqueia a implementação do núcleo.
 ## Etapa 2 — Comercial (concluída)
 - Entregue: ver CHANGELOG 0.2.0. Testes de integração do ciclo comercial completo + 2 E2E.
 - Restrições: assinatura eletrônica certificada não integrada (aceite registrado + comprovação anexada).
+
+## Etapa 3 — Operação (concluída)
+- Projetos (WBS por modelo, dependências sem ciclo, kanban, Gantt, riscos/problemas/decisões, status, linha de base versionada, ETC/EAC, EVM condicional, encerramentos operacional e financeiro), portfólio, recursos (capacidade em horas, conflitos, exceções autorizadas), horas e despesas/adiantamentos.
+- Pendência: tags de release não puderam ser enviadas (o proxy desta sessão recusa push de tags) — versões registradas no CHANGELOG.
 
 ## Como continuar
 1. `npm ci && cp .env.example .env` (ajuste DATABASE_URL e SESSION_SECRET).

@@ -159,6 +159,9 @@ export async function seedDemo(password: string) {
   const { seedCommercial } = await import("./seed-commercial");
   const contracts = await seedCommercial(demo);
   Object.assign(demo.refs, contracts);
+  const { seedOperations } = await import("./seed-operations");
+  const projects = await seedOperations(demo);
+  Object.assign(demo.refs, Object.fromEntries(Object.entries(projects).map(([k, v]) => [`project:${k}`, v])));
   await seedSecondOrg(password);
   return demo;
 }
