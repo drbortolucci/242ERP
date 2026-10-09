@@ -34,10 +34,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader title={terms.projects} breadcrumbs={[{ label: "Operação" }, { label: terms.projects }]} actions={<>
         <Link className="rounded-md border bg-white px-3 py-1.5 text-sm" href="/app/projetos/portfolio">Portfólio executivo</Link>
-        {ctx.permissions.has("project.write") && <Link className="rounded-md bg-brand-600 px-3 py-1.5 text-sm text-white" href="/app/projetos?novo=1">Novo projeto</Link>}
+        {ctx.permissions.has("project.write") && <Link className="rounded-md bg-brand-600 px-3 py-1.5 text-sm text-white" href="/app/projetos?novo=1">Cadastrar {terms.project.toLowerCase()}</Link>}
       </>} />
       {showNew && (
-        <Card title={contract ? `Novo projeto a partir do contrato ${contract.number}` : "Novo projeto"} className="mb-6">
+        <Card title={contract ? `Cadastrar ${terms.project.toLowerCase()} a partir do contrato ${contract.number}` : `Cadastrar ${terms.project.toLowerCase()}`} className="mb-6">
           <ActionForm action={createProjectAction}>
             {contract && <input type="hidden" name="contractId" value={contract.id} />}
             <FormGrid cols={3}>
