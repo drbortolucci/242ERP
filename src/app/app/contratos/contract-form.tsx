@@ -3,7 +3,7 @@ import { ActionForm, Checkbox, FormGrid, Input, Select, SubmitButton } from "@/c
 import type { ActionState } from "@/server/action";
 
 type Opt = { value: string; label: string };
-const MODELS: Opt[] = [["FIXED_PRICE", "Preço fechado"], ["TIME_MATERIAL", "Time & material"], ["MONTHLY_ALLOCATION", "Alocação mensal"], ["HOUR_PACKAGE", "Pacote de horas"], ["AMS_RECURRING", "AMS recorrente"], ["ADVISORY", "Advisory"], ["TRAINING", "Treinamento"], ["HYBRID", "Híbrido"]].map(([value, label]) => ({ value, label }));
+const MODELS: Opt[] = [["FIXED_PRICE", "Preço fechado"], ["TIME_MATERIAL", "Time & material"], ["MONTHLY_ALLOCATION", "Alocação mensal"], ["HOUR_PACKAGE", "Pacote de horas"], ["AMS_RECURRING", "Recorrente com franquia (AMS, manutenção, fee)"], ["ADVISORY", "Advisory"], ["TRAINING", "Treinamento"], ["HYBRID", "Híbrido"]].map(([value, label]) => ({ value, label }));
 const REV: Opt[] = [["TIME_MATERIAL", "Horas aprovadas × tarifa (T&M)"], ["PERCENT_COMPLETE_HOURS", "% de conclusão por horas (preço fechado)"], ["MILESTONE", "Marcos aceitos"], ["STRAIGHT_LINE", "Linear mensal (recorrente/AMS)"], ["ON_MEASUREMENT", "Na aprovação da medição"]].map(([value, label]) => ({ value, label }));
 
 export function ContractForm({ action, c, hidden, lk, showParty }: { action: (s: ActionState | undefined, fd: FormData) => Promise<ActionState>; c?: Record<string, unknown>; hidden: Record<string, string>; lk: { terms: Opt[]; sla: Opt[]; users: Opt[]; units: Opt[]; ccs: Opt[]; companies?: Opt[]; customers?: Opt[] }; showParty?: boolean }) {

@@ -3,6 +3,8 @@
  * Cada entrada descreve campos tipados e validados; operações passam por permissão e auditoria.
  * Entidades com regras próprias (empresas, SLA, tabelas de preço, calendários) têm telas específicas.
  */
+import { SERVICE_CATEGORIES } from "@/domain/sectors";
+import { WBS_TEMPLATE_OPTIONS } from "@/domain/wbs-templates";
 export type FieldType = "text" | "textarea" | "int" | "decimal" | "bool" | "date" | "select" | "lookup" | "tags";
 
 export interface ConfigField {
@@ -30,7 +32,7 @@ export interface ConfigEntity {
 
 const MODELS = [
   { value: "FIXED_PRICE", label: "Preço fechado" }, { value: "TIME_MATERIAL", label: "Time & material" }, { value: "MONTHLY_ALLOCATION", label: "Alocação mensal" },
-  { value: "HOUR_PACKAGE", label: "Pacote de horas" }, { value: "AMS_RECURRING", label: "AMS recorrente" }, { value: "ADVISORY", label: "Advisory" },
+  { value: "HOUR_PACKAGE", label: "Pacote de horas" }, { value: "AMS_RECURRING", label: "Recorrente com franquia (AMS, manutenção, fee)" }, { value: "ADVISORY", label: "Advisory" },
   { value: "TRAINING", label: "Treinamento" }, { value: "HYBRID", label: "Híbrido" },
 ];
 
@@ -41,9 +43,7 @@ export const CONFIG_ENTITIES: ConfigEntity[] = [
     fields: [
       { name: "code", label: "Código", type: "text", required: true, list: true },
       { name: "name", label: "Nome", type: "text", required: true, list: true },
-      { name: "category", label: "Categoria", type: "select", required: true, list: true, options: [
-        { value: "IMPLEMENTATION", label: "Implementação" }, { value: "CONSULTING", label: "Consultoria" }, { value: "ALLOCATION", label: "Alocação" },
-        { value: "AMS", label: "AMS" }, { value: "ADVISORY", label: "Advisory" }, { value: "TRAINING", label: "Treinamento" }, { value: "OTHER", label: "Outro" }] },
+      { name: "category", label: "Categoria", type: "select", required: true, list: true, options: SERVICE_CATEGORIES.map((c) => ({ value: c.value, label: c.label })) },
       { name: "defaultModel", label: "Modelo comercial padrão", type: "select", options: MODELS, list: true },
       { name: "revenueAccountId", label: "Conta de receita", type: "lookup", lookup: { entity: "managerialAccount", labelField: "name", where: { type: "REVENUE" } } },
       { name: "description", label: "Descrição", type: "textarea" },
@@ -70,14 +70,14 @@ export const CONFIG_ENTITIES: ConfigEntity[] = [
       { name: "appliesToKind", label: "Aplica-se a", type: "select", options: [{ value: "NEW", label: "Novos negócios" }, { value: "RENEWAL", label: "Renovações" }, { value: "UPSELL", label: "Upsell" }, { value: "CROSS_SELL", label: "Cross-sell" }] },
     ],
   },
-  { key: "tipos-projeto", model: "projectType", title: "Tipos de projeto", group: "Operação", description: "Tipos e modelos de WBS.", hasActive: true, orderBy: { name: "asc" },
+  { key: "tipos-projeto", model: "projectType", title: "Tipos de projeto", group: "Operação", description: "Tipos de projeto/trabalho e o modelo de WBS aplicado na criação.", hasActive: true, orderBy: { name: "asc" },
     fields: [
       { name: "name", label: "Nome", type: "text", required: true, list: true },
-      { name: "templateKey", label: "Modelo de WBS", type: "select", list: true, options: ["ERP_IMPLEMENTATION", "DIAGNOSTIC", "ROLLOUT", "INTEGRATION", "TRAINING", "ADVISORY", "ALLOCATION", "AMS"].map((k) => ({ value: k, label: k })) },
+      { name: "templateKey", label: "Modelo de WBS (biblioteca)", type: "select", list: true, options: WBS_TEMPLATE_OPTIONS, hint: "Um modelo próprio pode ser definido em Configurador › Setor e terminologia." },
     ] },
   { key: "papeis", model: "teamRole", title: "Papéis de equipe", group: "Operação", description: "Papéis usados em propostas, tarifas e alocações.", hasActive: true, orderBy: { name: "asc" }, fields: [{ name: "name", label: "Papel", type: "text", required: true, list: true }] },
   { key: "senioridades", model: "seniorityLevel", title: "Senioridades", group: "Operação", description: "Níveis de senioridade.", orderBy: { order: "asc" }, fields: [{ name: "name", label: "Nome", type: "text", required: true, list: true }, { name: "order", label: "Ordem", type: "int", required: true, list: true }] },
-  { key: "competencias", model: "skill", title: "Competências", group: "Operação", description: "Competências técnicas e funcionais (SAP e outras tecnologias).", unique: ["name"], hasActive: true, orderBy: { name: "asc" },
+  { key: "competencias", model: "skill", title: "Competências", group: "Operação", description: "Competências técnicas e funcionais da equipe.", unique: ["name"], hasActive: true, orderBy: { name: "asc" },
     fields: [{ name: "name", label: "Competência", type: "text", required: true, list: true }, { name: "category", label: "Categoria", type: "text", list: true }] },
   {
     key: "categorias-despesa", model: "expenseCategory", title: "Categorias de despesa", group: "Operação", description: "Categorias, conta gerencial e padrões de reembolso/cobrança.", hasActive: true, orderBy: { name: "asc" },

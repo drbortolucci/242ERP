@@ -5,7 +5,7 @@ export const ALL_MODULES = ["crm", "projects", "resources", "timesheet", "expens
 /** Catálogo de planos da plataforma (preços fictícios para demonstração; ajustáveis no painel da plataforma). */
 export const PLAN_CATALOG = [
   {
-    code: "STARTER", name: "Essencial", description: "Para consultorias em início de operação", priceMonthly: "490.00", maxUsers: 5, maxCompanies: 1, maxStorageMb: 1024,
+    code: "STARTER", name: "Essencial", description: "Para empresas de serviços em início de operação", priceMonthly: "490.00", maxUsers: 5, maxCompanies: 1, maxStorageMb: 1024,
     modules: ["crm", "projects", "resources", "timesheet", "expenses", "billing", "finance"], features: [], trialDays: 14, rank: 1,
   },
   {

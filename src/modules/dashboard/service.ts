@@ -3,6 +3,7 @@
  * origem (rastreável). Valores de margem/custo só com `margin.view`/`controlling.read`.
  */
 import type { Ctx } from "@/server/context";
+import { getTerms } from "../sectors/service";
 import { addDays, addMonths, civil, monthStart, todayIn } from "@/lib/dates";
 import { dec, money, sum } from "@/lib/money";
 import { crmMetrics } from "../crm/service";
@@ -19,6 +20,7 @@ const fmt = (v: { toString(): string } | number) => new Intl.NumberFormat("pt-BR
 export async function dashboardFor(ctx: Ctx): Promise<Section[]> {
   const can = (p: string) => ctx.permissions.has(p);
   const today = todayIn(ctx.timezone);
+  const terms = await getTerms(ctx);
   const cur = monthStart(today);
   const prev = addMonths(cur, -1);
   const yearStart = `${today.slice(0, 4)}-01-01`;
@@ -87,8 +89,8 @@ export async function dashboardFor(ctx: Ctx): Promise<Section[]> {
     const projects = await ctx.db.project.findMany({ where: { status: { in: ["ACTIVE", "PLANNING", "ON_HOLD"] } }, select: { id: true } });
     const flags = (await Promise.all(projects.map((p) => projectAnalytics(ctx, p.id)))).filter((a) => a).map((a) => a!.flags);
     const timeSubmitted = can("time.approve") ? await ctx.db.timeEntry.count({ where: { status: "SUBMITTED" } }) : 0;
-    out.push({ key: "projects", title: "Projetos", metrics: [
-      { label: "Projetos em andamento", value: projects.length, href: "/app/projetos/portfolio" },
+    out.push({ key: "projects", title: terms.projects, metrics: [
+      { label: `${terms.projects} em andamento`, value: projects.length, href: "/app/projetos/portfolio" },
       { label: "Com atraso", value: flags.filter((f) => f.late).length, href: "/app/projetos/portfolio", tone: flags.some((f) => f.late) ? "bad" : "default" },
       ...(can("margin.view") ? [{ label: "Estouro ou margem baixa", value: flags.filter((f) => f.overBudget || f.lowMargin).length, href: can("controlling.read") ? "/app/controladoria/pl" : "/app/projetos/portfolio", tone: flags.some((f) => f.overBudget || f.lowMargin) ? ("bad" as const) : ("default" as const) }] : []),
       { label: "Horas aguardando aprovação", value: timeSubmitted, href: "/app/horas/aprovacao", tone: timeSubmitted ? "warn" : "default" },
@@ -97,8 +99,8 @@ export async function dashboardFor(ctx: Ctx): Promise<Section[]> {
   if (can("ams.read")) {
     const open = await ctx.db.ticket.findMany({ where: { status: { in: OPEN_STATUSES } }, select: { escalationLevel: true, resolutionBreached: true, responseBreached: true, assigneeProfessionalId: true } });
     const low = can("ams.manage") ? (await Promise.all((await ctx.db.contract.findMany({ where: { commercialModel: "AMS_RECURRING", status: "ACTIVE" }, select: { id: true } })).map((c) => hourBankSummary(ctx, c.id)))).filter((s) => s.lowBalance).length : null;
-    out.push({ key: "ams", title: "Sustentação (AMS)", metrics: [
-      { label: "Chamados abertos", value: open.length, href: "/app/ams/chamados" },
+    out.push({ key: "ams", title: terms.supportArea, metrics: [
+      { label: `${terms.tickets} em aberto`, value: open.length, href: "/app/ams/chamados" },
       { label: "Em risco de SLA", value: open.filter((t) => t.escalationLevel === 1 && !t.resolutionBreached).length, href: "/app/ams/chamados?sla=risk", tone: "warn" },
       { label: "SLA violado (abertos)", value: open.filter((t) => t.responseBreached || t.resolutionBreached).length, href: "/app/ams/chamados?sla=breached", tone: open.some((t) => t.resolutionBreached) ? "bad" : "default" },
       ...(low !== null ? [{ label: "Contratos com saldo baixo", value: low, href: "/app/ams/saldos", tone: low ? ("warn" as const) : ("default" as const) }] : [{ label: "Sem responsável", value: open.filter((t) => !t.assigneeProfessionalId).length, href: "/app/ams/chamados" }]),
@@ -131,7 +133,7 @@ export async function dashboardFor(ctx: Ctx): Promise<Section[]> {
     out.push({ key: "me", title: "Minha semana", metrics: [
       { label: "Horas apontadas na semana", value: Number(hours._sum.hours ?? 0).toFixed(2), href: "/app/horas" },
       { label: "Rascunhos/recusados a enviar", value: drafts, href: "/app/horas", tone: drafts ? "warn" : "default" },
-      { label: "Chamados atribuídos", value: tickets, href: "/app/minha-area" },
+      { label: `${terms.tickets} atribuídos a você`, value: tickets, href: "/app/minha-area" },
     ] });
   }
   if (myApprovals) out.unshift({ key: "approvals", title: "Pendências para você", metrics: [{ label: "Aprovações aguardando sua decisão", value: myApprovals, href: "/app/aprovacoes", tone: "warn" }] });

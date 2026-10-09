@@ -26,7 +26,7 @@ const LABELS: Record<string, string> = {
   WRITTEN_OFF: "Baixado (perda)", RECONCILED: "Conciliado", IGNORED: "Ignorado", APPLIED: "Aplicado",
   // modelos
   FIXED_PRICE: "Preço fechado", TIME_MATERIAL: "Time & material", MONTHLY_ALLOCATION: "Alocação mensal", HOUR_PACKAGE: "Pacote de horas",
-  AMS_RECURRING: "AMS recorrente", ADVISORY: "Advisory", TRAINING: "Treinamento", HYBRID: "Híbrido",
+  AMS_RECURRING: "Recorrente com franquia (AMS, manutenção, fee)", ADVISORY: "Advisory", TRAINING: "Treinamento", HYBRID: "Híbrido",
   // vínculo
   CLT: "CLT", PJ: "PJ", PARTNER: "Parceiro", OTHER: "Outro",
   GREEN: "Verde", YELLOW: "Amarelo", RED: "Vermelho",

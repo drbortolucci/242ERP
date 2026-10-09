@@ -4,7 +4,7 @@ import { ActionForm, FormGrid, Input, Select, SubmitButton } from "@/components/
 import type { ActionState } from "@/server/action";
 
 type Opt = { value: string; label: string };
-const MODELS: Opt[] = [["FIXED_PRICE", "Preço fechado"], ["TIME_MATERIAL", "Time & material"], ["MONTHLY_ALLOCATION", "Alocação mensal"], ["HOUR_PACKAGE", "Pacote de horas"], ["AMS_RECURRING", "AMS recorrente"], ["ADVISORY", "Advisory"], ["TRAINING", "Treinamento"], ["HYBRID", "Híbrido"]].map(([value, label]) => ({ value, label }));
+const MODELS: Opt[] = [["FIXED_PRICE", "Preço fechado"], ["TIME_MATERIAL", "Time & material"], ["MONTHLY_ALLOCATION", "Alocação mensal"], ["HOUR_PACKAGE", "Pacote de horas"], ["AMS_RECURRING", "Recorrente com franquia (AMS, manutenção, fee)"], ["ADVISORY", "Advisory"], ["TRAINING", "Treinamento"], ["HYBRID", "Híbrido"]].map(([value, label]) => ({ value, label }));
 
 export function OpportunityForm({ action, lk, o, items = [] }: { action: (s: ActionState | undefined, fd: FormData) => Promise<ActionState>; lk: { companies: Opt[]; customers: Opt[]; stages: Opt[]; users: Opt[]; partners: Opt[]; services: Opt[] }; o?: Record<string, unknown>; items?: { serviceId: string; commercialModel: string; estimatedValue: string }[] }) {
   // Chave estável por linha: remover uma linha não pode deslocar os valores (campos não controlados) das demais.

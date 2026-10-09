@@ -1,4 +1,6 @@
-# 242ERP — ERP SaaS para consultorias de serviços
+# 242ERP — ERP SaaS para empresas de serviços
+
+ERP para **qualquer empresa de serviços**, com especialidade em **consultorias** (TI/ERP e gestão). No cadastro a organização escolhe o setor de atividade — consultoria e TI, consultoria de gestão, engenharia e arquitetura, agências, escritórios contábeis/jurídicos, manutenção e serviços em campo, software, educação ou serviços em geral — que define tipos de projeto e modelos de WBS, serviços, papéis, categorias de despesa e a terminologia exibida (ex.: *Jobs*, *Ordens de serviço*, *Trabalhos*). Tudo é editável e as regras de negócio são as mesmas para todos os setores ([setores](docs/GUIA_CONFIGURACAO.md#0-setor-de-atividade-e-terminologia)).
 
 ERP multiempresa e multi-tenant que conecta **CRM → proposta → pedido → contrato → projeto/AMS → recursos → horas → medição → faturamento → recebimento → resultado**, e **requisição → cotação → compra → aceite → cobrança do fornecedor → pagamento → apropriação no projeto e na controladoria**.
 

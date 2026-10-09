@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTerms } from "@/modules/sectors/service";
 import { PageHeader, Card, StatusBadge } from "@/components/ui/page";
 import { DataTable, Pagination, Toolbar } from "@/components/ui/table";
 import { ActionForm, Checkbox, FormGrid, Input, Select, SubmitButton, Textarea } from "@/components/ui/form";
@@ -15,6 +16,7 @@ export const metadata = { title: "Projetos" };
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const s = await searchParams;
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   pagePerm(ctx, "project.read");
   const q = pageQuery(s);
   const status = sp(s, "status");
@@ -30,7 +32,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const typeForModel = contract?.commercialModel === "AMS_RECURRING" ? "AMS" : contract?.commercialModel === "MONTHLY_ALLOCATION" ? "Alocação" : contract?.commercialModel === "TRAINING" ? "Treinamento" : contract?.commercialModel === "ADVISORY" ? "Advisory" : "Implementação ERP";
   return (
     <>
-      <PageHeader title="Projetos" breadcrumbs={[{ label: "Operação" }, { label: "Projetos" }]} actions={<>
+      <PageHeader title={terms.projects} breadcrumbs={[{ label: "Operação" }, { label: terms.projects }]} actions={<>
         <Link className="rounded-md border bg-white px-3 py-1.5 text-sm" href="/app/projetos/portfolio">Portfólio executivo</Link>
         {ctx.permissions.has("project.write") && <Link className="rounded-md bg-brand-600 px-3 py-1.5 text-sm text-white" href="/app/projetos?novo=1">Novo projeto</Link>}
       </>} />

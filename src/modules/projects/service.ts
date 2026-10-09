@@ -7,6 +7,7 @@ import { zDate, zDecimal, zOptDate, zOptId, zOptStr, zStr, zBool } from "@/lib/z
 import { addMonths, civil, monthStart, monthsBetween, toCivil, todayIn, type CivilDate } from "@/lib/dates";
 import { allocate, dec, money, qty, sum } from "@/lib/money";
 import { PROJECT_TEMPLATES } from "../admin/defaults";
+import type { WbsTemplate } from "@/domain/wbs-templates";
 import { validateCustomFields } from "../config/custom-fields";
 import type { TenantTx } from "@/server/tenant-db";
 
@@ -70,16 +71,23 @@ export async function createProject(ctx: Ctx, i: ProjectInput) {
       },
     });
     await writeBaseline(ctx, tx, proj.id, 1, "Orçamento original", { plannedStart: i.plannedStart, plannedEnd: i.plannedEnd, effortHours: i.effortHours, revenue: i.revenue, laborCost: i.laborCost, thirdPartyCost: i.thirdPartyCost, expenseCost: i.expenseCost, scope: i.description });
-    if (i.applyTemplate && type?.templateKey && PROJECT_TEMPLATES[type.templateKey]) await applyTemplate(ctx, tx, proj.id, type.templateKey, i.plannedStart, i.plannedEnd, i.effortHours);
-    await audit(ctx, { action: "project.create", entity: "Project", entityId: proj.id, companyId: i.companyId, changes: { code, contract: contract?.number, template: type?.templateKey } }, tx);
+    const tpl = type ? projectTypeTemplate(type) : null;
+    if (i.applyTemplate && tpl) await applyTemplate(ctx, tx, proj.id, tpl, i.plannedStart, i.plannedEnd, i.effortHours);
+    await audit(ctx, { action: "project.create", entity: "Project", entityId: proj.id, companyId: i.companyId, changes: { code, contract: contract?.number, template: type?.wbsTemplate ? "custom" : type?.templateKey } }, tx);
     return proj;
   });
   return p;
 }
 
+/** Modelo de WBS do tipo de projeto: o modelo próprio da organização tem precedência sobre o da biblioteca. */
+export function projectTypeTemplate(type: { templateKey: string | null; wbsTemplate: unknown }): WbsTemplate | null {
+  const own = type.wbsTemplate as WbsTemplate | null;
+  if (Array.isArray(own) && own.length) return own;
+  return type.templateKey ? PROJECT_TEMPLATES[type.templateKey] ?? null : null;
+}
+
 /** Gera WBS a partir do modelo: fases distribuídas no prazo e horas pela participação de cada item. */
-async function applyTemplate(ctx: Ctx, tx: TenantTx, projectId: string, key: string, start: CivilDate, end: CivilDate, effort: string) {
-  const tpl = PROJECT_TEMPLATES[key];
+async function applyTemplate(ctx: Ctx, tx: TenantTx, projectId: string, tpl: WbsTemplate, start: CivilDate, end: CivilDate, effort: string) {
   const days = Math.max(1, Math.round((civil(end).getTime() - civil(start).getTime()) / 86400000));
   const totalShare = tpl.reduce((a, ph) => a + ph.items.reduce((b, it) => b + it.share, 0), 0);
   let cursor = 0;

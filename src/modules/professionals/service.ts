@@ -55,7 +55,7 @@ export async function createProfessional(ctx: Ctx, i: ProfessionalInput) {
   if (i.email && (await ctx.db.professional.findFirst({ where: { email: i.email } }))) throw conflict("Já existe profissional com este e-mail.");
   const p = await ctx.db.professional.create({ data: { organizationId: ctx.orgId, ...toData(i) } });
   await setSkills(ctx, p.id, i.skillIds);
-  // Vincula usuário existente com o mesmo e-mail (portal do consultor)
+  // Vincula usuário existente com o mesmo e-mail (minha área do profissional)
   if (p.email) await linkUserByEmail(ctx, p.id, p.email);
   await audit(ctx, { action: "professional.create", entity: "Professional", entityId: p.id, companyId: p.companyId, changes: { name: p.name, employmentType: p.employmentType } });
   return p;

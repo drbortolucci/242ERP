@@ -1,4 +1,5 @@
 import { PageHeader, Card, StatusBadge, Badge } from "@/components/ui/page";
+import { getTerms } from "@/modules/sectors/service";
 import { DataTable } from "@/components/ui/table";
 import { ActionForm, Input, SubmitButton } from "@/components/ui/form";
 import { requireCtx } from "@/server/auth/next";
@@ -11,11 +12,12 @@ const RAG: Record<string, "green" | "amber" | "red"> = { GREEN: "green", YELLOW:
 export const metadata = { title: "Projetos" };
 export default async function PortalProjects() {
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   const projects = await portalProjects(ctx);
   const approver = ctx.permissions.has("portal.approve");
   return (
     <>
-      <PageHeader title="Projetos" />
+      <PageHeader title={terms.projects} />
       {projects.length === 0 && <p className="text-sm text-slate-500">Nenhum projeto.</p>}
       <div className="space-y-6">{projects.map((p) => (
         <Card key={p.id} title={<span>{p.code} {p.name} <StatusBadge status={p.status} /></span>}>

@@ -148,9 +148,9 @@ export async function seedFoundation(password: string): Promise<DemoContext> {
 }
 
 export async function seedSecondOrg(password: string) {
-  const { org, user } = await provisionOrganization({ orgName: "Outra Consultoria", userName: "Otto Admin", email: "admin@outra.local", password, planCode: "STARTER" });
+  const { org, user } = await provisionOrganization({ orgName: "Outra Engenharia", userName: "Otto Admin", email: "admin@outra.local", password, planCode: "STARTER", sector: "ENGINEERING" });
   const ctx = await buildCtx(user.id, org.id);
-  await saveCompanyStep(ctx, { kind: "HEADQUARTERS", legalName: "Outra Consultoria Ltda", cnpj: cnpjFromBase("246813570001"), currency: "BRL", timezone: "America/Sao_Paulo" });
+  await saveCompanyStep(ctx, { kind: "HEADQUARTERS", legalName: "Outra Engenharia Ltda", cnpj: cnpjFromBase("246813570001"), currency: "BRL", timezone: "America/Sao_Paulo" });
   await createParty(ctx, { personType: "COMPANY", name: "Cliente Exclusivo da Outra S.A.", document: cnpjFromBase("864213570001"), isCustomer: true, isProspect: false, isSupplier: false, isPartner: false });
   await saveChecklist(ctx, [], true);
 }

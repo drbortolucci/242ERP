@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("cria organização, entra e configura a empresa no onboarding", async ({ page }) => {
   const suffix = Date.now().toString(36);
   await page.goto("/cadastro");
-  await page.getByLabel("Nome da organização (sua consultoria)").fill(`Consultoria E2E ${suffix}`);
+  await page.getByLabel("Nome da organização (sua empresa)").fill(`Consultoria E2E ${suffix}`);
   await page.getByLabel("Seu nome").fill("Pessoa Teste");
   await page.getByLabel("E-mail").fill(`e2e-${suffix}@exemplo.com`);
   await page.getByLabel("Senha").fill("SenhaForte123");

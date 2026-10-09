@@ -1,4 +1,5 @@
 import { PageHeader, StatusBadge, Badge } from "@/components/ui/page";
+import { getTerms } from "@/modules/sectors/service";
 import { DataTable } from "@/components/ui/table";
 import { requireCtx } from "@/server/auth/next";
 import { pagePerm } from "@/server/page-guard";
@@ -9,12 +10,13 @@ import { formatMoney, formatQty } from "@/lib/money";
 export const metadata = { title: "Saldos e franquias" };
 export default async function HourBanksPage() {
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   pagePerm(ctx, "ams.manage");
   const contracts = await ctx.db.contract.findMany({ where: { commercialModel: "AMS_RECURRING", status: { in: ["ACTIVE", "SUSPENDED", "ENDED"] } }, orderBy: { number: "asc" } });
   const [rows, pn] = await Promise.all([Promise.all(contracts.map(async (c) => ({ id: c.id, c, s: await hourBankSummary(ctx, c.id) }))), nameMap(ctx, "party", contracts.map((c) => c.partyId))]);
   return (
     <>
-      <PageHeader title="Saldos de horas e franquias AMS" breadcrumbs={[{ label: "AMS" }, { label: "Saldos e franquias" }]} />
+      <PageHeader title={terms.balances} subtitle="Franquias de horas, consumo, excedente e expiração dos contratos recorrentes." breadcrumbs={[{ label: terms.supportArea }, { label: terms.balances }]} />
       <DataTable rows={rows} rowHref={(r) => `/app/ams/saldos/${r.id}`} columns={[
         { key: "n", label: "Contrato", render: (r) => `${r.c.number} — ${r.c.title}` }, { key: "p", label: "Cliente", render: (r) => pn.get(r.c.partyId) },
         { key: "f", label: "Franquia/mês", align: "right", render: (r) => `${formatQty(r.s.franchise)} h` },

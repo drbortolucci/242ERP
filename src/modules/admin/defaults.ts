@@ -3,20 +3,22 @@
  * Nada aqui representa regra fiscal: retenções e códigos fiscais são cadastrados pelo responsável fiscal.
  */
 import { ROLE_TEMPLATES } from "@/lib/permissions";
+import { DEFAULT_SECTOR, SECTOR_PROFILES } from "@/domain/sectors";
+import { WBS_TEMPLATES, type WbsTemplate } from "@/domain/wbs-templates";
 
 export const DEFAULT_ACCOUNTS: { code: string; name: string; type: "REVENUE" | "DEDUCTION" | "DIRECT_COST" | "OPERATING_EXPENSE" | "FINANCIAL" | "OTHER"; systemKey?: string; parent?: string }[] = [
   { code: "1", name: "Receita bruta de serviços", type: "REVENUE" },
-  { code: "1.01", name: "Receita de projetos", type: "REVENUE", systemKey: "REVENUE_PROJECTS", parent: "1" },
-  { code: "1.02", name: "Receita recorrente AMS", type: "REVENUE", systemKey: "REVENUE_AMS", parent: "1" },
-  { code: "1.03", name: "Receita de alocação", type: "REVENUE", systemKey: "REVENUE_ALLOCATION", parent: "1" },
+  { code: "1.01", name: "Receita de projetos e serviços", type: "REVENUE", systemKey: "REVENUE_PROJECTS", parent: "1" },
+  { code: "1.02", name: "Receita de contratos recorrentes (AMS, manutenção, fee)", type: "REVENUE", systemKey: "REVENUE_AMS", parent: "1" },
+  { code: "1.03", name: "Receita de alocação de equipe", type: "REVENUE", systemKey: "REVENUE_ALLOCATION", parent: "1" },
   { code: "1.04", name: "Reembolso de despesas cobradas", type: "REVENUE", systemKey: "REVENUE_REIMBURSEMENT", parent: "1" },
   { code: "2", name: "Deduções da receita", type: "DEDUCTION" },
   { code: "2.01", name: "Tributos sobre receita (gerencial)", type: "DEDUCTION", systemKey: "DEDUCTION_TAXES", parent: "2" },
   { code: "3", name: "Custos diretos", type: "DIRECT_COST" },
   { code: "3.01", name: "Custo de profissionais internos alocados", type: "DIRECT_COST", systemKey: "LABOR_COST", parent: "3" },
   { code: "3.02", name: "Custo de terceiros e subcontratados", type: "DIRECT_COST", systemKey: "THIRD_PARTY_COST", parent: "3" },
-  { code: "3.03", name: "Despesas diretas de projetos", type: "DIRECT_COST", systemKey: "DIRECT_EXPENSES", parent: "3" },
-  { code: "3.04", name: "Licenças e outros custos atribuíveis", type: "DIRECT_COST", systemKey: "LICENSE_COST", parent: "3" },
+  { code: "3.03", name: "Despesas diretas de projetos e serviços", type: "DIRECT_COST", systemKey: "DIRECT_EXPENSES", parent: "3" },
+  { code: "3.04", name: "Materiais, licenças e outros custos atribuíveis", type: "DIRECT_COST", systemKey: "LICENSE_COST", parent: "3" },
   { code: "4", name: "Despesas operacionais", type: "OPERATING_EXPENSE" },
   { code: "4.01", name: "Pessoal (folha)", type: "OPERATING_EXPENSE", systemKey: "PAYROLL", parent: "4" },
   // Conta redutora: absorção do custo de pessoal apropriado aos projetos (evita duplicidade com a folha)
@@ -39,28 +41,14 @@ export const DEFAULT_PIPELINE = [
   { name: "Perdida", probability: 0, kind: "LOST" },
 ];
 
-export const DEFAULT_LOSS_REASONS = ["Preço", "Prazo", "Escopo não atendido", "Concorrente", "Projeto cancelado pelo cliente", "Sem orçamento"];
+export const DEFAULT_LOSS_REASONS = ["Preço", "Prazo", "Escopo não atendido", "Concorrente", "Demanda cancelada pelo cliente", "Sem orçamento"];
 
-export const DEFAULT_PROJECT_TYPES = [
-  { name: "Implementação ERP", templateKey: "ERP_IMPLEMENTATION" },
-  { name: "Diagnóstico", templateKey: "DIAGNOSTIC" },
-  { name: "Rollout", templateKey: "ROLLOUT" },
-  { name: "Integração", templateKey: "INTEGRATION" },
-  { name: "Treinamento", templateKey: "TRAINING" },
-  { name: "Advisory", templateKey: "ADVISORY" },
-  { name: "Alocação", templateKey: "ALLOCATION" },
-  { name: "AMS / Sustentação", templateKey: "AMS" },
-];
-
-export const DEFAULT_TEAM_ROLES = ["Gerente de projeto", "Arquiteto de soluções", "Consultor funcional", "Consultor técnico", "Desenvolvedor", "Analista de suporte", "Instrutor"];
+/** Valores do setor padrão (consultoria e TI). Novas organizações recebem os itens do setor escolhido (src/domain/sectors.ts). */
+const DEFAULT_PROFILE = SECTOR_PROFILES[DEFAULT_SECTOR];
+export const DEFAULT_PROJECT_TYPES = DEFAULT_PROFILE.projectTypes;
+export const DEFAULT_TEAM_ROLES = DEFAULT_PROFILE.teamRoles;
 export const DEFAULT_SENIORITY = ["Júnior", "Pleno", "Sênior", "Especialista"];
-export const DEFAULT_EXPENSE_CATEGORIES = [
-  { name: "Transporte", reimbursableDefault: true, billableDefault: true },
-  { name: "Hospedagem", reimbursableDefault: true, billableDefault: true },
-  { name: "Alimentação", reimbursableDefault: true, billableDefault: false },
-  { name: "Quilometragem", reimbursableDefault: true, billableDefault: true },
-  { name: "Software e ferramentas", reimbursableDefault: false, billableDefault: false },
-];
+export const DEFAULT_EXPENSE_CATEGORIES = DEFAULT_PROFILE.expenseCategories;
 export const DEFAULT_PAYMENT_TERMS = [
   { name: "À vista", installments: [{ days: 0, percent: "100" }] },
   { name: "30 dias", installments: [{ days: 30, percent: "100" }] },
@@ -80,7 +68,7 @@ export const DEFAULT_APPROVAL_RULES = [
 ];
 
 export const DEFAULT_SLA = {
-  name: "SLA padrão AMS",
+  name: "Nível de serviço padrão",
   pauseStatuses: ["WAITING_CUSTOMER", "WAITING_THIRD_PARTY"],
   targets: [
     { priority: "P1", responseMinutes: 30, resolutionMinutes: 240 },
@@ -90,45 +78,9 @@ export const DEFAULT_SLA = {
   ],
 };
 
-export const DEFAULT_SERVICES = [
-  { code: "IMPL", name: "Implementação de sistemas", category: "IMPLEMENTATION", defaultModel: "FIXED_PRICE", account: "REVENUE_PROJECTS" },
-  { code: "CONS", name: "Consultoria", category: "CONSULTING", defaultModel: "TIME_MATERIAL", account: "REVENUE_PROJECTS" },
-  { code: "ALOC", name: "Alocação de profissionais", category: "ALLOCATION", defaultModel: "MONTHLY_ALLOCATION", account: "REVENUE_ALLOCATION" },
-  { code: "AMS", name: "Sustentação AMS", category: "AMS", defaultModel: "AMS_RECURRING", account: "REVENUE_AMS" },
-  { code: "ADV", name: "Advisory", category: "ADVISORY", defaultModel: "ADVISORY", account: "REVENUE_PROJECTS" },
-  { code: "TRN", name: "Treinamento", category: "TRAINING", defaultModel: "TRAINING", account: "REVENUE_PROJECTS" },
-];
+export const DEFAULT_SERVICES = DEFAULT_PROFILE.services;
 
 export { ROLE_TEMPLATES };
 
-/** Modelos de WBS por tipo de projeto (fases → entregáveis). */
-export const PROJECT_TEMPLATES: Record<string, { phase: string; items: { name: string; kind: "DELIVERABLE" | "TASK" | "MILESTONE"; share: number; acceptance?: boolean }[] }[]> = {
-  ERP_IMPLEMENTATION: [
-    { phase: "Preparação", items: [{ name: "Kick-off", kind: "MILESTONE", share: 2 }, { name: "Plano do projeto", kind: "DELIVERABLE", share: 3, acceptance: true }] },
-    { phase: "Desenho da solução", items: [{ name: "Workshops de processos", kind: "TASK", share: 10 }, { name: "Documento de desenho (BBP)", kind: "DELIVERABLE", share: 10, acceptance: true }] },
-    { phase: "Realização", items: [{ name: "Configuração", kind: "TASK", share: 25 }, { name: "Desenvolvimentos e integrações", kind: "TASK", share: 20 }, { name: "Testes integrados", kind: "DELIVERABLE", share: 10, acceptance: true }] },
-    { phase: "Preparação final", items: [{ name: "Treinamento de usuários", kind: "TASK", share: 8 }, { name: "Migração de dados", kind: "TASK", share: 7 }] },
-    { phase: "Go-live e suporte", items: [{ name: "Go-live", kind: "MILESTONE", share: 1, acceptance: true }, { name: "Suporte pós go-live", kind: "TASK", share: 4 }] },
-  ],
-  DIAGNOSTIC: [
-    { phase: "Levantamento", items: [{ name: "Entrevistas", kind: "TASK", share: 40 }, { name: "Mapeamento AS-IS", kind: "DELIVERABLE", share: 25, acceptance: true }] },
-    { phase: "Recomendações", items: [{ name: "Relatório de diagnóstico", kind: "DELIVERABLE", share: 30, acceptance: true }, { name: "Apresentação executiva", kind: "MILESTONE", share: 5 }] },
-  ],
-  ROLLOUT: [
-    { phase: "Análise de localização", items: [{ name: "Gap analysis local", kind: "DELIVERABLE", share: 20, acceptance: true }] },
-    { phase: "Adaptação", items: [{ name: "Configuração local", kind: "TASK", share: 40 }, { name: "Testes", kind: "TASK", share: 20 }] },
-    { phase: "Go-live", items: [{ name: "Cutover", kind: "MILESTONE", share: 10, acceptance: true }, { name: "Hypercare", kind: "TASK", share: 10 }] },
-  ],
-  INTEGRATION: [
-    { phase: "Especificação", items: [{ name: "Especificação de interfaces", kind: "DELIVERABLE", share: 20, acceptance: true }] },
-    { phase: "Construção", items: [{ name: "Desenvolvimento", kind: "TASK", share: 50 }, { name: "Testes de integração", kind: "DELIVERABLE", share: 20, acceptance: true }] },
-    { phase: "Implantação", items: [{ name: "Produção", kind: "MILESTONE", share: 10 }] },
-  ],
-  TRAINING: [
-    { phase: "Preparação", items: [{ name: "Material didático", kind: "DELIVERABLE", share: 40, acceptance: true }] },
-    { phase: "Execução", items: [{ name: "Turmas", kind: "TASK", share: 50 }, { name: "Avaliação de reação", kind: "DELIVERABLE", share: 10 }] },
-  ],
-  ADVISORY: [{ phase: "Aconselhamento", items: [{ name: "Sessões de advisory", kind: "TASK", share: 80 }, { name: "Relatório executivo", kind: "DELIVERABLE", share: 20, acceptance: true }] }],
-  ALLOCATION: [{ phase: "Alocação", items: [{ name: "Atividades alocadas", kind: "TASK", share: 100 }] }],
-  AMS: [{ phase: "Sustentação", items: [{ name: "Atendimento de chamados", kind: "TASK", share: 90 }, { name: "Relatório mensal de SLA", kind: "DELIVERABLE", share: 10 }] }],
-};
+/** Modelos de WBS por chave (compatibilidade): ver a biblioteca em src/domain/wbs-templates.ts. */
+export const PROJECT_TEMPLATES: Record<string, WbsTemplate> = Object.fromEntries(Object.entries(WBS_TEMPLATES).map(([k, v]) => [k, v.phases]));

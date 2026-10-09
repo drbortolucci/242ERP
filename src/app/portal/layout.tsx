@@ -2,13 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCtx } from "@/server/auth/next";
 import { prisma } from "@/server/db";
+import { getTerms } from "@/modules/sectors/service";
 
 export const dynamic = "force-dynamic";
-const NAV = [["/portal", "Início"], ["/portal/chamados", "Chamados"], ["/portal/aprovacoes", "Aprovações"], ["/portal/projetos", "Projetos"], ["/portal/financeiro", "Financeiro"], ["/portal/conhecimento", "Base de conhecimento"]];
 
 /** Portal do cliente: navegação própria, sem acesso às telas internas. */
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
+  const NAV = [["/portal", "Início"], ["/portal/chamados", terms.tickets], ["/portal/aprovacoes", "Aprovações"], ["/portal/projetos", terms.projects], ["/portal/financeiro", "Financeiro"], ["/portal/conhecimento", "Base de conhecimento"]];
   if (ctx.kind !== "CLIENT") redirect("/app");
   const party = ctx.partyId ? await prisma.party.findFirst({ where: { id: ctx.partyId, organizationId: ctx.orgId }, select: { name: true, tradeName: true } }) : null;
   return (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTerms } from "@/modules/sectors/service";
 import type { Party } from "@prisma/client";
 import type { Ctx } from "@/server/context";
 import { Card, DefinitionList, Grid, Stat, StatusBadge, Badge } from "@/components/ui/page";
@@ -20,6 +21,7 @@ export async function Party360({ ctx, party, role }: { ctx: Ctx; party: Party; r
   if (role === "fornecedores") return <Supplier360 ctx={ctx} party={party} />;
   const id = party.id;
   const can = (p: string) => ctx.permissions.has(p);
+  const terms = await getTerms(ctx);
   const today = todayIn(ctx.timezone);
   const [contacts, opps, proposals, orders, contracts, projects, tickets, receivables, activities, related] = await Promise.all([
     ctx.db.contact.findMany({ where: { partyId: id, active: true } }),
@@ -115,7 +117,7 @@ export async function Party360({ ctx, party, role }: { ctx: Ctx; party: Party; r
       )}
 
       {can("ams.read") && tickets.length > 0 && (
-        <Card title="Chamados AMS e SLA">
+        <Card title={`${terms.tickets} e nível de serviço`}>
           <DataTable dense rows={tickets.slice(0, 15)} rowHref={(t) => `/app/ams/chamados/${t.id}`} columns={[{ key: "number", label: "Nº" }, { key: "title", label: "Título" }, { key: "priority", label: "Prioridade" }, { key: "status", label: "Situação", render: (t) => <StatusBadge status={t.status} /> }, { key: "sla", label: "SLA", render: (t) => (t.responseBreached || t.resolutionBreached ? <Badge tone="red">Violado</Badge> : <Badge tone="green">Dentro</Badge>) }, { key: "csat", label: "Satisfação", render: (t) => t.csatScore ?? "—" }]} />
         </Card>
       )}

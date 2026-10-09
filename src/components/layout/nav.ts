@@ -1,4 +1,5 @@
 import type { Permission } from "@/lib/permissions";
+import { DEFAULT_TERMS, type Terms } from "@/domain/sectors";
 
 export interface NavItem {
   label: string;
@@ -107,10 +108,23 @@ export const NAV: NavGroup[] = [
   },
 ];
 
-export function visibleNav(perms: Set<string>, modules: string[]): NavGroup[] {
+/** Rótulos que seguem a terminologia do setor da organização. */
+function termLabel(href: string, label: string, t: Terms) {
+  const map: Record<string, string> = {
+    "/app/projetos": t.projects,
+    "/app/controladoria/pl": `P&L de ${t.projects.toLowerCase()}`,
+    "/app/ams/chamados": t.tickets,
+    "/app/ams/saldos": t.balances,
+    "/app/cadastros/profissionais": t.professionals,
+  };
+  return map[href] ?? label;
+}
+
+export function visibleNav(perms: Set<string>, modules: string[], terms: Terms = DEFAULT_TERMS): NavGroup[] {
   return NAV.map((g) => ({
     ...g,
-    items: g.items.filter((i) => {
+    label: g.label === "AMS" ? terms.supportArea : g.label,
+    items: g.items.map((i) => ({ ...i, label: termLabel(i.href, i.label, terms) })).filter((i) => {
       if (i.module && !modules.includes(i.module)) return false;
       if (!i.perm) return true;
       const ps = Array.isArray(i.perm) ? i.perm : [i.perm];

@@ -12,7 +12,7 @@ export interface EditorValues {
   paymentTermId: string; discountPct: string; taxRatePct: string; lines: Line[];
 }
 const KINDS: Opt[] = [["LABOR", "Perfil/esforço (horas)"], ["FIXED", "Valor fechado"], ["RECURRING", "Recorrente (meses)"], ["EXPENSE", "Despesa reembolsável"], ["THIRD_PARTY", "Terceiro"], ["LICENSE", "Licença"]].map(([value, label]) => ({ value, label }));
-const MODELS: Opt[] = [["FIXED_PRICE", "Preço fechado"], ["TIME_MATERIAL", "Time & material"], ["MONTHLY_ALLOCATION", "Alocação mensal"], ["HOUR_PACKAGE", "Pacote de horas"], ["AMS_RECURRING", "AMS recorrente"], ["ADVISORY", "Advisory"], ["TRAINING", "Treinamento"], ["HYBRID", "Híbrido"]].map(([value, label]) => ({ value, label }));
+const MODELS: Opt[] = [["FIXED_PRICE", "Preço fechado"], ["TIME_MATERIAL", "Time & material"], ["MONTHLY_ALLOCATION", "Alocação mensal"], ["HOUR_PACKAGE", "Pacote de horas"], ["AMS_RECURRING", "Recorrente com franquia (AMS, manutenção, fee)"], ["ADVISORY", "Advisory"], ["TRAINING", "Treinamento"], ["HYBRID", "Híbrido"]].map(([value, label]) => ({ value, label }));
 const n = (s: string) => { const v = (s ?? "").trim(); if (!v) return "0"; const x = v.includes(",") ? v.replace(/\./g, "").replace(",", ".") : v; return /^-?\d+(\.\d+)?$/.test(x) ? x : "0"; };
 const cls = "w-full rounded border border-slate-300 px-1.5 py-1 text-sm";
 

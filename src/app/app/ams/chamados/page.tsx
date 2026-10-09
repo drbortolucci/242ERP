@@ -1,4 +1,5 @@
 import { PageHeader, Card, StatusBadge, Stat, Grid, Badge } from "@/components/ui/page";
+import { getTerms } from "@/modules/sectors/service";
 import { DataTable, Pagination, Toolbar } from "@/components/ui/table";
 import { ActionForm, FormGrid, Input, Select, SubmitButton, Textarea } from "@/components/ui/form";
 import { requireCtx } from "@/server/auth/next";
@@ -15,6 +16,7 @@ export const metadata = { title: "Chamados" };
 export default async function TicketsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const s = await searchParams;
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   pagePerm(ctx, "ams.read");
   const q = pageQuery(s);
   const status = sp(s, "status") ?? "OPEN";
@@ -34,7 +36,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
   const canWrite = ctx.permissions.has("ams.write");
   return (
     <>
-      <PageHeader title="Chamados AMS" breadcrumbs={[{ label: "AMS" }, { label: "Chamados" }]} />
+      <PageHeader title={terms.tickets} breadcrumbs={[{ label: terms.supportArea }, { label: terms.tickets }]} />
       <Grid cols={5}>
         <Stat label="Abertos" value={openAll.length} href="/app/ams/chamados" />
         <Stat label="P1/P2 abertos" value={count((t) => t.priority === "P1" || t.priority === "P2")} tone={count((t) => t.priority === "P1") ? "bad" : "default"} href="/app/ams/chamados?priority=P1" />
@@ -68,7 +70,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
               <Select name="contractId" label="Contrato AMS" options={contracts.map((c) => ({ value: c.id, label: `${c.number} ${c.title}` }))} placeholder="Automático (contrato AMS ativo do cliente)" />
               <Select name="companyId" label="Empresa (sem contrato)" options={companies} placeholder="—" />
               <FormGrid cols={2}><Select name="type" label="Tipo" options={TYPE_OPTIONS} /><Input name="category" label="Categoria" /></FormGrid>
-              <FormGrid cols={2}><Input name="system" label="Sistema" /><Input name="module" label="Módulo" /></FormGrid>
+              <FormGrid cols={2}><Input name="system" label={terms.systemField} /><Input name="module" label={terms.moduleField} /></FormGrid>
               <Input name="title" label="Título" required />
               <Textarea name="description" label="Descrição" required />
               <FormGrid cols={2}><Select name="impact" label="Impacto" options={LEVEL_OPTIONS} defaultValue="3" /><Select name="urgency" label="Urgência" options={LEVEL_OPTIONS} defaultValue="3" /></FormGrid>

@@ -39,7 +39,7 @@ export default async function ProfilePage() {
         </Card>
         <Card title="Preferências">
           <ActionForm action={savePrefsAction}>
-            <Select name="dashboard" label="Painel inicial" defaultValue={prefs.dashboard ?? "auto"} options={[{ value: "auto", label: "Automático pelo perfil" }, { value: "director", label: "Diretoria" }, { value: "sales", label: "Comercial" }, { value: "pmo", label: "Gestão de projetos" }, { value: "purchasing", label: "Compras" }, { value: "finance", label: "Financeiro" }, { value: "controller", label: "Controladoria" }, { value: "consultant", label: "Consultor" }]} />
+            <Select name="dashboard" label="Painel inicial" defaultValue={prefs.dashboard ?? "auto"} options={[{ value: "auto", label: "Automático pelo perfil" }, { value: "director", label: "Diretoria" }, { value: "sales", label: "Comercial" }, { value: "pmo", label: "Gestão de projetos" }, { value: "purchasing", label: "Compras" }, { value: "finance", label: "Financeiro" }, { value: "controller", label: "Controladoria" }, { value: "consultant", label: "Profissional (minha área)" }]} />
             <Input name="pageSize" type="number" label="Itens por página" defaultValue={String(prefs.pageSize ?? 25)} />
             <SubmitButton>Salvar</SubmitButton>
           </ActionForm>

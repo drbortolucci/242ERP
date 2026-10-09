@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTerms } from "@/modules/sectors/service";
 import { PageHeader, Card, DefinitionList, StatusBadge, Badge } from "@/components/ui/page";
 import { ActionForm, Input, Select, SubmitButton, Textarea } from "@/components/ui/form";
 import { requireCtx } from "@/server/auth/next";
@@ -10,6 +11,7 @@ import { portalCommentAction, portalStatusAction, portalRateAction } from "../..
 export default async function PortalTicket({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   portalScope(ctx);
   const t = await getTicket(ctx, id).catch(() => null);
   if (!t) notFound();
@@ -17,7 +19,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ id: s
   const tz = ctx.timezone;
   return (
     <>
-      <PageHeader title={`${t.number} — ${t.title}`} subtitle={<span className="flex gap-2"><StatusBadge status={t.status} /><Badge>{t.priority}</Badge></span>} breadcrumbs={[{ label: "Chamados", href: "/portal/chamados" }, { label: t.number }]} />
+      <PageHeader title={`${t.number} — ${t.title}`} subtitle={<span className="flex gap-2"><StatusBadge status={t.status} /><Badge>{t.priority}</Badge></span>} breadcrumbs={[{ label: terms.tickets, href: "/portal/chamados" }, { label: t.number }]} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card title="Descrição"><p className="whitespace-pre-wrap text-sm">{t.description}</p></Card>
