@@ -2,5 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "bash scripts/vercel-build.sh",
-  "regions": ["gru1"]
+  "regions": ["iad1"]
 }
