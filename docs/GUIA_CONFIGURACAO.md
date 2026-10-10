@@ -59,6 +59,12 @@ O sistema **não** traz alíquotas, códigos de serviço ou regras de retenção
 4. Compras de mercadorias: no pedido de compra, escolha o produto e o depósito de entrada; o recebimento dá entrada no estoque.
 5. Atribua o perfil "Estoque e expedição" a quem recebe, conta e entrega mercadorias.
 
+## 4.2 Cobrança bancária
+1. Configurador › Integrações › "Bancos e cobrança": em homologação/desenvolvimento o provedor é sempre o simulado. Em produção, um provedor real precisa estar implementado, homologado com o banco e com as credenciais no cofre do ambiente (informe só o nome do segredo).
+2. Defina `BANKING_WEBHOOK_SECRET` no ambiente e cadastre a URL `/api/webhooks/cobranca/{provider}` no provedor.
+3. Multa e juros são informados na emissão conforme o contrato com o cliente; o sistema não define percentuais.
+4. Em Financeiro › Conciliação, crie regras para lançamentos recorrentes do extrato (tarifas, rendimentos) e use "Conciliar automaticamente".
+
 ## 5. Contratos e AMS
 - Modelo comercial, método de reconhecimento de receita, exigência de OC e de aprovação do cliente (horas/medições), alíquota de dedução gerencial (informada pela empresa).
 - AMS: política de SLA, mensalidade, franquia, banco de horas (não acumula / acumula N meses / pré-pago), política de excedente (cobrar, exigir aprovação, absorver), limite de alerta de saldo.

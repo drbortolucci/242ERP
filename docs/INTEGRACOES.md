@@ -8,7 +8,8 @@ Toda integração externa passa por um **adaptador** com implementação **simul
 | Cobrança de assinaturas SaaS | `src/server/providers/payments.ts` | 🔌 Simulado + webhook HMAC idempotente (`/api/webhooks/payments/{provider}`); provedor real pendente |
 | NFS-e | `src/server/providers/fiscal.ts`, `src/modules/billing/fiscal.ts` | 🔌 Simulado com idempotência, tentativas e webhook HMAC (`/api/webhooks/fiscal`); provedor real + validação do responsável fiscal pendentes |
 | E-mail transacional | `src/server/providers/email.ts` | 🔌 Caixa de saída simulada (`OutboundMessage`) |
-| Extrato bancário | `src/domain/statement.ts` | ✅ Importação de arquivo CSV/OFX; 🔌 API bancária/CNAB pendente |
+| Extrato bancário | `src/domain/statement.ts`, `src/modules/banking/service.ts` | ✅ Importação de arquivo CSV/OFX e conciliação automática (valor/data e regras por descrição); 🔌 API de extrato do banco pendente |
+| Cobrança bancária (boleto/PIX) | `src/server/providers/banking.ts`, `src/modules/banking/service.ts` | 🔌 Simulado com idempotência, baixa automática por webhook HMAC (`/api/webhooks/cobranca/{provider}`) e liquidação do título; provedor real (API do banco ou gateway) e homologação com o banco pendentes. Arquivos CNAB (remessa/retorno) dependem do leiaute de cada banco e não estão implementados |
 | Folha de pagamento | `importPayroll` | ✅ Importação consolidada por centro de custo (CSV); integração com sistema de folha pendente |
 | Contabilidade | `/api/razao` | ✅ Exportação CSV dos lançamentos gerenciais por competência |
 | Assinatura eletrônica | — | 🔌 Aceite registrado com evidência anexada; provedor certificado pendente |
@@ -41,6 +42,7 @@ As respostas não incluem custos, margens nem comentários internos. Escritas s�
 |------|--------------|--------------|
 | `POST /api/webhooks/payments/{provider}` | Cabeçalho `x-signature` = HMAC-SHA256(`PAYMENT_WEBHOOK_SECRET`, corpo) | Por id do evento (`WebhookEvent`) |
 | `POST /api/webhooks/fiscal` | Cabeçalho `x-signature` = HMAC-SHA256(`FISCAL_WEBHOOK_SECRET`, corpo) | Por (externalId, situação) |
+| `POST /api/webhooks/cobranca/{provider}` | Cabeçalho `x-signature` = HMAC-SHA256(`BANKING_WEBHOOK_SECRET`, corpo); corpo normalizado pelo adaptador (`externalId`, `type` PAID/CANCELED/EXPIRED, `paidAmount`, `paidAt`) | Liquidação com chave `charge:{id}`; aviso repetido registrado como duplicado |
 
 ## Limitações conhecidas
 - Demonstrativos e P&L são **gerenciais** (não substituem a contabilidade oficial, SPED ou obrigações acessórias).

@@ -2444,17 +2444,17 @@ model Warehouse {
 
 // Saldo corrente por produto e depósito (mantido na mesma transação dos movimentos)
 model StockBalance {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   companyId      String
   productId      String
   warehouseId    String
-  quantity       Decimal  @default(0) @db.Decimal(14, 4)
-  reserved       Decimal  @default(0) @db.Decimal(14, 4)
-  avgCost        Decimal  @default(0) @db.Decimal(18, 6)
-  value          Decimal  @default(0) @db.Decimal(18, 2)
+  quantity       Decimal   @default(0) @db.Decimal(14, 4)
+  reserved       Decimal   @default(0) @db.Decimal(14, 4)
+  avgCost        Decimal   @default(0) @db.Decimal(18, 6)
+  value          Decimal   @default(0) @db.Decimal(18, 2)
   lastMovementAt DateTime? @db.Date
-  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([organizationId, productId, warehouseId])
 }
@@ -2562,4 +2562,69 @@ model ProductOrderLine {
   amount         Decimal  @db.Decimal(18, 2)
   unitCost       Decimal? @db.Decimal(18, 6)
   costAmount     Decimal? @db.Decimal(18, 2)
+}
+
+// ----------------------------------------------------------------------------
+// Cobrança bancária (boleto e PIX) e conciliação automática
+// Emissão e baixa pelo provedor configurado (banco/gateway). Em desenvolvimento o provedor é SEMPRE simulado:
+// nenhum boleto ou cobrança PIX real é registrado.
+// ----------------------------------------------------------------------------
+
+model BankCharge {
+  id               String    @id @default(cuid())
+  organizationId   String
+  companyId        String
+  number           String
+  receivableId     String
+  bankAccountId    String
+  method           String // BOLETO | PIX
+  provider         String
+  environment      String // SIMULATED | SANDBOX | PRODUCTION
+  idempotencyKey   String
+  externalId       String?
+  status           String    @default("PENDING") // PENDING | REGISTERED | PAID | CANCELED | EXPIRED | ERROR
+  amount           Decimal   @db.Decimal(18, 2)
+  dueDate          DateTime  @db.Date
+  finePct          Decimal?  @db.Decimal(9, 4)
+  interestPctMonth Decimal?  @db.Decimal(9, 4)
+  digitableLine    String?
+  pixCode          String?
+  paymentUrl       String?
+  paidAt           DateTime? @db.Date
+  paidAmount       Decimal?  @db.Decimal(18, 2)
+  settlementId     String?
+  lastError        String?
+  createdById      String
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@index([provider, externalId])
+}
+
+// Trilha de eventos da cobrança (registro, pagamento, baixa) — inclusive webhooks recebidos
+model BankChargeEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  chargeId       String
+  type           String // REGISTERED | PAID | CANCELED | EXPIRED | ERROR | WEBHOOK_DUPLICATE
+  payload        Json     @default("{}")
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([organizationId, chargeId])
+}
+
+// Regras de conciliação automática: linha de extrato cuja descrição contém o texto vira lançamento (ex.: tarifas)
+model ReconciliationRule {
+  id             String   @id @default(cuid())
+  organizationId String
+  bankAccountId  String?
+  name           String
+  contains       String
+  direction      String   @default("OUT") // IN | OUT
+  description    String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 }

@@ -18,6 +18,7 @@ export const DOC_PREFIX: Record<string, string> = {
   STOCK_TRANSFER: "TRF",
   INVENTORY_COUNT: "INV",
   PRODUCT_ORDER: "PVP",
+  BANK_CHARGE: "BOL",
 };
 
 type RawCapable = { $queryRawUnsafe: <T = unknown>(query: string, ...values: unknown[]) => Promise<T> };

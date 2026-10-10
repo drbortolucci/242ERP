@@ -31,6 +31,9 @@ Cada etapa abaixo indica a tela, quem executa e o controle aplicado. Os dados de
 Pedido de compra com itens de estoque (depósito de entrada) → aprovação → recebimento (entrada ao preço do pedido; atualiza custo médio) → documento do fornecedor (3 vias) → conta a pagar.
 Pedido de venda de produtos → confirmação (reserva o disponível) → entrega (baixa ao custo médio, contas a receber pela condição) → recebimento no financeiro. Cancelamento após a entrega devolve o estoque ao mesmo custo e cancela os títulos sem liquidação. A nota fiscal de mercadorias é emitida pelo provedor fiscal homologado — o pedido não é documento fiscal.
 
+## 2.2 Cobrança bancária
+Título a receber em aberto → emissão de boleto/PIX pelo provedor (conta de recebimento da empresa do título) → cliente paga → aviso do banco (webhook assinado) → liquidação automática do título (juros se pago a maior; parcial mantém saldo) → extrato importado → conciliação automática do crédito com o movimento gerado pela liquidação.
+
 ## 3. Sustentação (AMS)
 Chamado (equipe, portal ou API) → prioridade (impacto × urgência) → prazos de SLA em horário comercial → atendimento (pausas aguardando cliente/terceiro) → resolução → confirmação do cliente / encerramento automático → avaliação. Horas no chamado consomem a franquia (FIFO por vencimento); excedente segue a política do contrato e é medido no faturamento.
 

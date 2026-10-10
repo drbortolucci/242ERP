@@ -28,7 +28,7 @@ test("financeiro mede pendências, consulta cobrança, recebe título e acompanh
   await page.goto("/app/financeiro/receber");
   await page.getByRole("row").nth(1).getByRole("link").first().click();
   await page.locator('input[name="principal"]').fill("100");
-  await page.locator('select[name="bankAccountId"]').selectOption({ index: 0 });
+  await page.getByRole("combobox", { name: /^Conta bancária/ }).selectOption({ index: 0 });
   await page.getByRole("button", { name: "Registrar recebimento" }).click();
   await expect(page.getByText("Liquidação registrada.")).toBeVisible();
   await expect(page.getByText("Parcial").first()).toBeVisible();
