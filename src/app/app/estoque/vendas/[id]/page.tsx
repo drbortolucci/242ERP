@@ -11,6 +11,7 @@ import { dec, formatMoney, formatQty } from "@/lib/money";
 import { cancelOrderAction, confirmOrderAction, deliverOrderAction, saveOrderAction } from "../../actions";
 import { productOptions, warehouseOptions } from "../../lookups";
 import { OrderLines } from "../order-lines";
+import { issueNfeAction } from "../../../fiscal/actions";
 
 export default async function ProductOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,6 +19,7 @@ export default async function ProductOrderPage({ params }: { params: Promise<{ i
   pageAnyPerm(ctx, "sales.goods", "inventory.read");
   const o = await ctx.db.productOrder.findFirst({ where: { id } });
   if (!o) notFound();
+  const fiscal = await ctx.db.fiscalDocument.findFirst({ where: { productOrderId: id }, orderBy: { createdAt: "desc" } });
   const [lines, receivables, wh, term] = await Promise.all([
     ctx.db.productOrderLine.findMany({ where: { orderId: id } }), ctx.db.receivable.findMany({ where: { productOrderId: id }, orderBy: { dueDate: "asc" } }),
     ctx.db.warehouse.findFirst({ where: { id: o.warehouseId } }), o.paymentTermId ? ctx.db.paymentTerm.findFirst({ where: { id: o.paymentTermId } }) : null,
@@ -39,7 +41,7 @@ export default async function ProductOrderPage({ params }: { params: Promise<{ i
             {o.status === "DRAFT" && <ActionButton action={confirmOrderAction} fields={{ id }} variant="primary">Confirmar e reservar</ActionButton>}
           </div>
         )} />
-      <Notice>Pedido interno. A nota fiscal de mercadorias deve ser emitida pelo módulo fiscal (provedor homologado) — este documento não é nota fiscal.</Notice>
+      <Notice>O pedido é um documento interno. A nota fiscal de mercadorias é a NF-e emitida pelo provedor fiscal (abaixo), com as regras validadas pelo responsável fiscal.</Notice>
       <div className="mt-4 grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
           <Card title="Itens">
@@ -83,6 +85,20 @@ export default async function ProductOrderPage({ params }: { params: Promise<{ i
               ...(o.deliveredAt ? [{ label: "Entregue em", value: formatCivil(o.deliveredAt) }] : []),
               ...(o.cancelReason ? [{ label: "Motivo do cancelamento", value: o.cancelReason }] : []),
             ]} />
+          </Card>
+          <Card title="Nota fiscal (NF-e)">
+            {fiscal ? (
+              <DefinitionList items={[
+                { label: "Situação", value: <StatusBadge status={fiscal.status} /> }, { label: "Número", value: fiscal.number ?? "—" },
+                { label: "Chave/código", value: <span className="break-all text-xs">{fiscal.verificationCode ?? "—"}</span> },
+                ...(fiscal.environment === "SIMULATED" ? [{ label: "Ambiente", value: "Simulado (sem validade fiscal)" }] : []),
+                ...(fiscal.lastError ? [{ label: "Mensagem", value: fiscal.lastError }] : []),
+              ]} />
+            ) : <p className="text-sm text-slate-500">Nenhuma NF-e solicitada.</p>}
+            {ctx.permissions.has("fiscal.issue") && ["CONFIRMED", "DELIVERED"].includes(o.status) && !["AUTHORIZED", "PENDING"].includes(o.fiscalStatus) && (
+              <div className="mt-3"><ActionButton action={issueNfeAction} fields={{ id: o.id }} variant="primary" confirm="Emitir a NF-e deste pedido pelo provedor fiscal?">{fiscal ? "Emitir novamente" : "Emitir NF-e"}</ActionButton></div>
+            )}
+            {fiscal && <Link className="mt-2 block text-xs text-brand-700" href="/app/fiscal/documentos">Ver em Fiscal › Documentos</Link>}
           </Card>
           {canSell && o.status === "CONFIRMED" && (
             <Card title="Registrar entrega">

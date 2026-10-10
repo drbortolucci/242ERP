@@ -26,13 +26,19 @@ export async function requestFiscalDocument(ctx: Ctx, billingDocumentId: string)
   await ctx.db.billingDocument.update({ where: { id: d.id }, data: { fiscalStatus: "PENDING" } });
   await audit(ctx, { action: "fiscal.request", entity: "BillingDocument", entityId: d.id, changes: { provider: p.name, environment: p.environment } });
   await enqueue("fiscal.issue", { fiscalDocumentId: fd.id }, { organizationId: ctx.orgId, uniqueKey: `fiscal:${fd.id}:${fd.attempts}`, createdById: ctx.userId });
-  return fd;
+  // Processa já (ambientes sem processador de tarefas, como a homologação serverless); em falha transitória a tarefa refaz
+  try { return (await processFiscalDocument(fd.id)) ?? fd; } catch { return fd; }
 }
 
 /** Processa a emissão (tarefa). Erros transitórios contam tentativa; rejeição é registrada para correção. */
 export async function processFiscalDocument(fiscalDocumentId: string) {
   const fd = await prisma.fiscalDocument.findUnique({ where: { id: fiscalDocumentId } });
   if (!fd || !["PENDING", "ERROR"].includes(fd.status)) return fd;
+  if (fd.docType === "NFE") {
+    const { processProductInvoice } = await import("@/modules/fiscal/service");
+    return processProductInvoice(fd.id);
+  }
+  if (!fd.billingDocumentId) return fd;
   const d = await prisma.billingDocument.findUniqueOrThrow({ where: { id: fd.billingDocumentId } });
   const [company, party, items] = await Promise.all([
     prisma.company.findUniqueOrThrow({ where: { id: d.companyId } }),
@@ -79,8 +85,9 @@ export async function handleFiscalWebhook(rawBody: string, signature: string | n
   if (fd.status === body.status) return { ok: true, status: 200, duplicate: true };
   await prisma.$transaction([
     prisma.fiscalDocument.update({ where: { id: fd.id }, data: { status: body.status, number: body.number ?? fd.number, verificationCode: body.verificationCode ?? fd.verificationCode, lastError: body.message ?? null, authorizedAt: body.status === "AUTHORIZED" ? new Date() : fd.authorizedAt } }),
-    prisma.billingDocument.update({ where: { id: fd.billingDocumentId }, data: { fiscalStatus: body.status! } }),
+    ...(fd.billingDocumentId ? [prisma.billingDocument.update({ where: { id: fd.billingDocumentId }, data: { fiscalStatus: body.status! } })] : []),
+    ...(fd.productOrderId ? [prisma.productOrder.update({ where: { id: fd.productOrderId }, data: { fiscalStatus: body.status! } })] : []),
   ]);
-  await auditPlatform(null, `fiscal.webhook.${body.status!.toLowerCase()}`, "BillingDocument", fd.billingDocumentId, { externalId: body.externalId }, fd.organizationId);
+  await auditPlatform(null, `fiscal.webhook.${body.status!.toLowerCase()}`, fd.docType === "NFE" ? "ProductOrder" : "BillingDocument", fd.productOrderId ?? fd.billingDocumentId, { externalId: body.externalId }, fd.organizationId);
   return { ok: true, status: 200 };
 }

@@ -65,6 +65,12 @@ O sistema **não** traz alíquotas, códigos de serviço ou regras de retenção
 3. Multa e juros são informados na emissão conforme o contrato com o cliente; o sistema não define percentuais.
 4. Em Financeiro › Conciliação, crie regras para lançamentos recorrentes do extrato (tarifas, rendimentos) e use "Conciliar automaticamente".
 
+## 4.3 Fiscal
+1. Atribua o perfil "Responsável fiscal" ao contador/consultor tributário da empresa.
+2. Fiscal › Regras de produtos: cadastre CFOP, CST/CSOSN e alíquotas por produto ou NCM, com vigência e fundamentação. O responsável registra a validação (nome e registro profissional); alterações exigem nova validação.
+3. Códigos de serviço municipais (NFS-e) e retenções continuam no Configurador › Fiscal.
+4. Emissão real exige provedor homologado configurado em produção; fora dele todos os documentos são simulados (prefixo SIM, sem validade fiscal).
+
 ## 5. Contratos e AMS
 - Modelo comercial, método de reconhecimento de receita, exigência de OC e de aprovação do cliente (horas/medições), alíquota de dedução gerencial (informada pela empresa).
 - AMS: política de SLA, mensalidade, franquia, banco de horas (não acumula / acumula N meses / pré-pago), política de excedente (cobrar, exigir aprovação, absorver), limite de alerta de saldo.

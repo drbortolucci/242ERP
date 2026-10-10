@@ -86,6 +86,13 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "Fiscal",
+    items: [
+      { label: "Documentos fiscais", href: "/app/fiscal/documentos", perm: "fiscal.read" },
+      { label: "Regras de produtos (NF-e)", href: "/app/fiscal/regras", perm: "fiscal.read" },
+    ],
+  },
+  {
     label: "Controladoria",
     items: [
       { label: "DRE gerencial", href: "/app/controladoria/dre", perm: "controlling.read", module: "controlling" },

@@ -88,6 +88,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - **Segurança**: administradores só concedem permissões sensíveis que possuem e apenas dentro das próprias empresas, sem alterar o próprio acesso; usuários do portal recebem apenas permissões de portal; chaves de API exigem alcance total, escopos dentro das permissões do criador e deixam de valer se o criador perder o acesso; exportação integral apenas para administrador interno com acesso a todas as empresas; segredos de webhook de exemplo recusados fora de desenvolvimento/teste; apuração do banco de horas exige permissão; escopo de empresa verificado em atividades, entregáveis, registros, marcos e anexos; organização suspensa/cancelada bloqueia todas as escritas restantes; MFA ativo não é desativado ao reconfigurar; redirecionamento pós-login aceita apenas caminhos internos; módulos fora do plano bloqueados também por URL.
 - **Interface**: formulários com `method="post"` (sem vazamento de dados na URL antes da hidratação) e ids únicos (`useId`); Enter em campos de motivo não aprova; custo de referência oculto para quem não vê custos; P&L e fechamento com permissões coerentes; links de títulos corrigidos; linhas da oportunidade com chave estável; alocação a partir de solicitação em total de horas; tela de perfis renderiza um perfil por vez (página ~10× menor; elimina o erro intermitente de hidratação #418 observado em páginas muito grandes — ver nota técnica em `docs/BACKLOG.md`).
 
+## [1.4.0] — Fiscal: NF-e de mercadorias e gestão de documentos fiscais
+### Adicionado
+- Regras fiscais de produto (CFOP, CST/CSOSN e alíquotas de ICMS, IPI, PIS e COFINS) por empresa, produto ou NCM, com vigência, **informadas e validadas pelo responsável fiscal** (registro de quem validou e quando; qualquer alteração exige nova validação).
+- Emissão de NF-e de pedidos de venda de produtos pelo provedor fiscal configurado (simulado fora de produção), bloqueada se algum item não tiver regra vigente e validada; regra do produto prevalece sobre a do NCM.
+- Fiscal › Documentos: NFS-e e NF-e com situação, mensagens do provedor, reprocessamento após correção e cancelamento com justificativa (mínimo de 15 caracteres).
+- NFS-e processada imediatamente na solicitação (ambientes sem processador de tarefas, como a homologação), mantendo a tarefa para novas tentativas.
+- Perfil "Responsável fiscal" e permissões `fiscal.read`, `fiscal.manage`, `fiscal.validate`, `fiscal.issue`.
+### Limites
+- O sistema não define classificação fiscal, CFOP, CST/CSOSN nem alíquotas; não calcula substituição tributária, DIFAL, reduções de base ou benefícios; a validação final é do provedor homologado junto à SEFAZ/prefeitura.
+
 ## [1.3.0] — Cobrança bancária e conciliação automática
 ### Adicionado
 - Cobrança de títulos a receber por boleto registrado ou PIX com vencimento, a partir do título: valor do saldo em aberto, multa e juros informados conforme contrato, novo vencimento curto para título vencido, uma cobrança ativa por título.
