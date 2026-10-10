@@ -12,7 +12,7 @@ Toda integração externa passa por um **adaptador** com implementação **simul
 | Extrato bancário | `src/domain/statement.ts`, `src/modules/banking/service.ts` | ✅ Importação de arquivo CSV/OFX e conciliação automática (valor/data e regras por descrição); 🔌 API de extrato do banco pendente |
 | Cobrança bancária (boleto/PIX) | `src/server/providers/banking.ts`, `src/modules/banking/service.ts` | 🔌 Simulado com idempotência, baixa automática por webhook HMAC (`/api/webhooks/cobranca/{provider}`) e liquidação do título; provedor real (API do banco ou gateway) e homologação com o banco pendentes. Arquivos CNAB (remessa/retorno) dependem do leiaute de cada banco e não estão implementados |
 | Folha de pagamento | `importPayroll` | ✅ Importação consolidada por centro de custo (CSV); integração com sistema de folha pendente |
-| Contabilidade | `/api/razao` | ✅ Exportação CSV dos lançamentos gerenciais por competência |
+| Contabilidade | `/api/razao`, `/api/contabilidade/diario` | ✅ Contabilidade em partidas dobradas no sistema; exportação CSV do diário contábil e do razão gerencial; leiaute de importação no sistema do escritório contábil a combinar; ECD/ECF não geradas |
 | Assinatura eletrônica | — | 🔌 Aceite registrado com evidência anexada; provedor certificado pendente |
 | SSO (OIDC/SAML) | — | ⏳ Pendente (autenticação própria com MFA TOTP disponível) |
 

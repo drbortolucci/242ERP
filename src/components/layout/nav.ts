@@ -86,6 +86,17 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "Contabilidade",
+    items: [
+      { label: "Lançamentos (diário)", href: "/app/contabilidade/lancamentos", perm: "accounting.read" },
+      { label: "Balancete", href: "/app/contabilidade/balancete", perm: "accounting.read" },
+      { label: "Balanço patrimonial", href: "/app/contabilidade/balanco", perm: "accounting.read" },
+      { label: "DRE contábil", href: "/app/contabilidade/dre", perm: "accounting.read" },
+      { label: "Razão contábil", href: "/app/contabilidade/razao", perm: "accounting.read" },
+      { label: "Plano de contas", href: "/app/contabilidade/plano", perm: "accounting.read" },
+    ],
+  },
+  {
     label: "Fiscal",
     items: [
       { label: "Documentos fiscais", href: "/app/fiscal/documentos", perm: "fiscal.read" },

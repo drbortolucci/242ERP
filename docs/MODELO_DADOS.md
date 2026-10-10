@@ -42,6 +42,9 @@ Fonte da verdade: [`prisma/schema.prisma`](../prisma/schema.prisma) (133 modelos
 ### Estoque e vendas de produtos
 `ProductCategory`, `Product`, `Warehouse` (por empresa), `StockBalance` (saldo, reserva, custo médio e valor por produto × depósito, atualizado sob bloqueio na transação do movimento), `StockMovement` (imutável, cronológico por produto/depósito, com saldo após o movimento; estorno por `reversalOfId`), `InventoryCount`/`InventoryCountLine`, `ProductOrder`/`ProductOrderLine`. Vínculos: `PurchaseOrder.warehouseId`, `PurchaseOrderLine.productId`, `Receivable.productOrderId`.
 
+### Contabilidade
+`LedgerAccount` (plano contábil, natureza, sintética/analítica, código referencial, chave de sistema), `LedgerMapping` (de-para de contas bancárias e gerenciais), `JournalEntry` (lançamento automático com chave de idempotência ou manual; estorno por `reversalOfId`) e `JournalLine` (débito/crédito por conta, com data e empresa para relatórios).
+
 ### AMS
 `Ticket` (prazos, pausas, violações, escalonamento), `TicketComment` (PUBLIC/INTERNAL), `TicketEvent`, `KnowledgeArticle`, `HourBankEntry` (razão de horas: crédito, débito FIFO, expiração, ajuste, excedente com decisão).
 

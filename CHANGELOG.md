@@ -88,6 +88,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - **Segurança**: administradores só concedem permissões sensíveis que possuem e apenas dentro das próprias empresas, sem alterar o próprio acesso; usuários do portal recebem apenas permissões de portal; chaves de API exigem alcance total, escopos dentro das permissões do criador e deixam de valer se o criador perder o acesso; exportação integral apenas para administrador interno com acesso a todas as empresas; segredos de webhook de exemplo recusados fora de desenvolvimento/teste; apuração do banco de horas exige permissão; escopo de empresa verificado em atividades, entregáveis, registros, marcos e anexos; organização suspensa/cancelada bloqueia todas as escritas restantes; MFA ativo não é desativado ao reconfigurar; redirecionamento pós-login aceita apenas caminhos internos; módulos fora do plano bloqueados também por URL.
 - **Interface**: formulários com `method="post"` (sem vazamento de dados na URL antes da hidratação) e ids únicos (`useId`); Enter em campos de motivo não aprova; custo de referência oculto para quem não vê custos; P&L e fechamento com permissões coerentes; links de títulos corrigidos; linhas da oportunidade com chave estável; alocação a partir de solicitação em total de horas; tela de perfis renderiza um perfil por vez (página ~10× menor; elimina o erro intermitente de hidratação #418 observado em páginas muito grandes — ver nota técnica em `docs/BACKLOG.md`).
 
+## [1.5.0] — Contabilidade em partidas dobradas
+### Adicionado
+- Plano de contas contábil com estrutura sugerida (ativo, passivo, PL, receitas, custos e despesas) para revisão do contador, contas sintéticas/analíticas, código do plano referencial informado pelo contador e de-para de contas bancárias e gerenciais.
+- Contabilização automática idempotente por empresa e mês: documentos de cobrança (com retenções), vendas de produtos, títulos avulsos, contas a pagar (com mercadorias recebidas a faturar), liquidações e estornos, adiantamentos e aplicações, compensações, tarifas, lançamentos e transferências bancárias, saldos iniciais, folha importada e estoque (entrada, CMV, consumo, ajustes); cancelamentos geram lançamento inverso; períodos fechados não recebem lançamentos.
+- Lançamentos manuais balanceados (somente contas analíticas) e estorno por lançamento inverso.
+- Balancete, balanço patrimonial, DRE contábil, razão por conta e exportação do diário em CSV.
+- Perfil "Contador" e permissões `accounting.read` e `accounting.write`; novas organizações já recebem o plano sugerido.
+### Limites
+- As demonstrações não substituem a escrituração oficial (ECD/ECF) nem as demonstrações assinadas pelo contador; tributos sobre o lucro, depreciação e provisões são lançados manualmente.
+
 ## [1.4.0] — Fiscal: NF-e de mercadorias e gestão de documentos fiscais
 ### Adicionado
 - Regras fiscais de produto (CFOP, CST/CSOSN e alíquotas de ICMS, IPI, PIS e COFINS) por empresa, produto ou NCM, com vigência, **informadas e validadas pelo responsável fiscal** (registro de quem validou e quando; qualquer alteração exige nova validação).

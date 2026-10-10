@@ -9,6 +9,7 @@ import {
 import { addSectorItems } from "../sectors/service";
 import { DEFAULT_SECTOR, SECTOR_PROFILES } from "@/domain/sectors";
 import { auditPlatform } from "@/server/audit";
+import { SUGGESTED_CHART, parentCode } from "@/domain/chart-of-accounts";
 
 type Tx = Prisma.TransactionClient;
 
@@ -28,6 +29,14 @@ export async function seedOrgDefaults(tx: Tx, orgId: string, sector: string = DE
       data: { organizationId: orgId, code: a.code, name: a.name, type: a.type, systemKey: a.systemKey ?? null, parentId: a.parent ? accountIds.get(a.parent) : null },
     });
     accountIds.set(a.code, created.id);
+  }
+  // Plano de contas contábil sugerido (revisado depois pelo contador)
+  const ledgerIds = new Map<string, string>();
+  for (const a of SUGGESTED_CHART) {
+    let p = parentCode(a.code);
+    while (p && !ledgerIds.has(p)) p = parentCode(p);
+    const row = await tx.ledgerAccount.create({ data: { organizationId: orgId, code: a.code, name: a.name, nature: a.nature, analytic: a.analytic, parentId: p ? ledgerIds.get(p)! : null, systemKey: a.systemKey ?? null } });
+    ledgerIds.set(a.code, row.id);
   }
 
   await tx.pipelineStage.createMany({ data: DEFAULT_PIPELINE.map((s, i) => ({ organizationId: orgId, name: s.name, order: i + 1, probability: s.probability, kind: s.kind })) });

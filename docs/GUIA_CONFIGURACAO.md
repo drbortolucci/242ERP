@@ -71,6 +71,13 @@ O sistema **não** traz alíquotas, códigos de serviço ou regras de retenção
 3. Códigos de serviço municipais (NFS-e) e retenções continuam no Configurador › Fiscal.
 4. Emissão real exige provedor homologado configurado em produção; fora dele todos os documentos são simulados (prefixo SIM, sem validade fiscal).
 
+## 4.4 Contabilidade
+1. Atribua o perfil "Contador" ao responsável contábil.
+2. Contabilidade › Plano de contas: organizações novas recebem o plano sugerido; nas existentes, use "Criar plano sugerido". O contador revisa nomes e códigos, informa o código referencial (SPED) e cria subcontas analíticas.
+3. Faça o de-para das contas bancárias e das contas gerenciais de despesa/receita para contas contábeis analíticas.
+4. Lance os saldos de implantação (Contabilidade › Lançamentos › lançamento manual) contra "Saldos de implantação"; os saldos iniciais das contas bancárias e do estoque já são lançados automaticamente.
+5. Ao fim de cada mês: "Contabilizar mês" por empresa, confira o balancete e feche o período (Controladoria › Fechamento).
+
 ## 5. Contratos e AMS
 - Modelo comercial, método de reconhecimento de receita, exigência de OC e de aprovação do cliente (horas/medições), alíquota de dedução gerencial (informada pela empresa).
 - AMS: política de SLA, mensalidade, franquia, banco de horas (não acumula / acumula N meses / pré-pago), política de excedente (cobrar, exigir aprovação, absorver), limite de alerta de saldo.

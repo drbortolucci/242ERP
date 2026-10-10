@@ -73,6 +73,9 @@ export const PERMISSIONS = {
   "payment.reverse": "Estornar liquidações",
   "treasury.manage": "Tesouraria, transferências e conciliação",
   "offset.approve": "Autorizar compensações cliente/fornecedor",
+  // Contabilidade
+  "accounting.read": "Consultar contabilidade (diário, razão, balancete, balanço, DRE)",
+  "accounting.write": "Plano de contas, de-para, contabilização e lançamentos manuais",
   // Controladoria
   "controlling.read": "Consultar controladoria e DRE",
   "controlling.write": "Orçamentos, rateios e ajustes gerenciais",
@@ -99,7 +102,7 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   },
   {
     key: "director", name: "Sócio/Diretor", description: "Visão de negócio, caixa, margens e riscos",
-    permissions: P(...READ_OPS, "cost.view", "margin.view", "proposal.approve", "proposal.approve_high", "contract.approve", "purchase.approve", "payable.approve", "offset.approve", "audit.view", "data.export", "project.baseline"),
+    permissions: P(...READ_OPS, "accounting.read", "cost.view", "margin.view", "proposal.approve", "proposal.approve_high", "contract.approve", "purchase.approve", "payable.approve", "offset.approve", "audit.view", "data.export", "project.baseline"),
   },
   {
     key: "sales", name: "Comercial", description: "CRM, propostas e pedidos",
@@ -123,11 +126,15 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   },
   {
     key: "controller", name: "Controladoria", description: "Orçamento, P&L, rateios e fechamento",
-    permissions: P(...READ_OPS, "cost.view", "margin.view", "controlling.write", "period.close", "period.reopen", "data.export", "audit.view"),
+    permissions: P(...READ_OPS, "cost.view", "margin.view", "controlling.write", "period.close", "period.reopen", "data.export", "audit.view", "accounting.read", "accounting.write"),
   },
   {
     key: "purchasing", name: "Compras", description: "Requisições, cotações, pedidos e aceites",
     permissions: P("master.read", "master.write", "project.read", "purchase.request", "purchase.write", "purchase.receive", "finance.read", "inventory.read", "inventory.write"),
+  },
+  {
+    key: "accountant", name: "Contador", description: "Plano de contas, contabilização, lançamentos, balancete, balanço, DRE e fechamento",
+    permissions: P("master.read", "finance.read", "billing.read", "inventory.read", "controlling.read", "fiscal.read", "accounting.read", "accounting.write", "period.close", "data.export"),
   },
   {
     key: "fiscal", name: "Responsável fiscal", description: "Regras fiscais (validação), códigos de serviço, retenções e documentos fiscais",

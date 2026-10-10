@@ -34,6 +34,9 @@ Pedido de venda de produtos → confirmação (reserva o disponível) → entreg
 ## 2.2 Cobrança bancária
 Título a receber em aberto → emissão de boleto/PIX pelo provedor (conta de recebimento da empresa do título) → cliente paga → aviso do banco (webhook assinado) → liquidação automática do título (juros se pago a maior; parcial mantém saldo) → extrato importado → conciliação automática do crédito com o movimento gerado pela liquidação.
 
+## 2.3 Contabilização
+Operação registrada (cobrança, venda, conta a pagar, liquidação, banco, estoque) → "Contabilizar mês" gera os lançamentos que faltam (idempotente) → balancete/balanço/DRE → fechamento do período. Cancelamentos e estornos na origem geram o lançamento inverso; lançamentos manuais são corrigidos por estorno.
+
 ## 3. Sustentação (AMS)
 Chamado (equipe, portal ou API) → prioridade (impacto × urgência) → prazos de SLA em horário comercial → atendimento (pausas aguardando cliente/terceiro) → resolução → confirmação do cliente / encerramento automático → avaliação. Horas no chamado consomem a franquia (FIFO por vencimento); excedente segue a política do contrato e é medido no faturamento.
 
