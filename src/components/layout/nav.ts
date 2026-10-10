@@ -80,6 +80,7 @@ export const NAV: NavGroup[] = [
       { label: "Contas a pagar", href: "/app/financeiro/pagar", perm: "finance.read", module: "finance" },
       { label: "Adiantamentos", href: "/app/financeiro/adiantamentos", perm: "finance.read", module: "finance" },
       { label: "Tesouraria", href: "/app/financeiro/tesouraria", perm: "finance.read", module: "finance" },
+      { label: "Cobranças bancárias", href: "/app/financeiro/cobrancas-bancarias", perm: "finance.read", module: "finance" },
       { label: "Conciliação", href: "/app/financeiro/conciliacao", perm: "treasury.manage", module: "finance" },
       { label: "Fluxo de caixa", href: "/app/financeiro/fluxo-caixa", perm: "finance.read", module: "finance" },
     ],

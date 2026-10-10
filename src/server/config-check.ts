@@ -12,7 +12,7 @@ function isPlaceholder(v: string) {
 }
 
 /** Segredo de webhook utilizável: ausente ou com valor de exemplo (fora de desenvolvimento/teste) é tratado como não configurado. */
-export function webhookSecret(name: "PAYMENT_WEBHOOK_SECRET" | "FISCAL_WEBHOOK_SECRET"): string | null {
+export function webhookSecret(name: "PAYMENT_WEBHOOK_SECRET" | "FISCAL_WEBHOOK_SECRET" | "BANKING_WEBHOOK_SECRET"): string | null {
   const v = process.env[name];
   if (!v) return null;
   if (isPlaceholder(v) && !["development", "test"].includes(appEnv())) return null;

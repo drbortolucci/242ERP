@@ -174,7 +174,7 @@ export const INTEGRATION_KINDS = [
   { kind: "TEAMS", label: "Microsoft Teams (notificações)", providers: ["simulated"] },
   { kind: "ESIGN", label: "Assinatura eletrônica", providers: ["manual"] },
   { kind: "NFSE", label: "NFS-e (provedor fiscal)", providers: ["simulated"] },
-  { kind: "BANK", label: "Bancos e cobrança", providers: ["statement-import"] },
+  { kind: "BANK", label: "Bancos e cobrança (boleto/PIX)", providers: ["simulated", "statement-import"] },
   { kind: "ACCOUNTING", label: "Contabilidade", providers: ["csv-export"] },
   { kind: "TICKETING", label: "Ferramenta de chamados externa", providers: ["simulated"] },
   { kind: "API", label: "API externa (chaves)", providers: ["api-keys"] },

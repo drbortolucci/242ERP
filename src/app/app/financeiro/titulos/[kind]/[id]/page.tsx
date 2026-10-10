@@ -8,6 +8,7 @@ import { requireCtx } from "@/server/auth/next";
 import { pagePerm } from "@/server/page-guard";
 import { lookups, nameMap, userNameMap } from "@/modules/config/lookups";
 import { formatCivil, todayIn } from "@/lib/dates";
+import { ChargesCard } from "../../../charges-card";
 import { dec, formatMoney } from "@/lib/money";
 import { settleAction, reverseSettlementAction, approvePayableAction, applyAdvanceAction, reverseApplicationAction, offsetAction, reverseOffsetAction } from "../../../actions";
 
@@ -69,6 +70,7 @@ export default async function TitlePage({ params }: { params: Promise<{ kind: st
               </ActionForm>
             )}
           </Card>
+          {kind === "RECEIVABLE" && <ChargesCard ctx={ctx} receivable={t} />}
           <Card title="Adiantamentos aplicados">
             <DataTable dense rows={apps} empty="Nenhum." columns={[{ key: "a", label: "Valor", align: "right", render: (a) => formatMoney(a.amount) }, { key: "s", label: "Situação", render: (a) => <StatusBadge status={a.status} /> }, { key: "r", label: "", render: (a) => a.status === "POSTED" && can("payment.reverse") ? <ActionForm action={reverseApplicationAction} className="flex items-end gap-1"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="titleId" value={id} /><Input name="reason" aria-label="Motivo" placeholder="Motivo" required /><SubmitButton variant="danger">Estornar</SubmitButton></ActionForm> : null }]} />
             {settleable && advances.length > 0 && (

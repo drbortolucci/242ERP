@@ -3,7 +3,7 @@ const LABELS: Record<string, string> = {
   // genéricos
   DRAFT: "Rascunho", PENDING: "Pendente", PENDING_APPROVAL: "Aguardando aprovação", APPROVED: "Aprovado", REJECTED: "Rejeitado",
   CANCELED: "Cancelado", ACTIVE: "Ativo", INACTIVE: "Inativo", OPEN: "Aberto", CLOSED: "Fechado", DONE: "Concluído", SUBMITTED: "Enviado",
-  POSTED: "Efetivado", REVERSED: "Estornado", PAID: "Pago", PARTIAL: "Parcial", ISSUED: "Emitido",
+  POSTED: "Efetivado", REVERSED: "Estornado", DELIVERED: "Entregue", REGISTERED: "Registrada", PAID: "Pago", PARTIAL: "Parcial", ISSUED: "Emitido",
   // organização
   TRIAL: "Em avaliação", PAST_DUE: "Inadimplente", SUSPENDED: "Suspensa", TRIALING: "Em avaliação",
   // CRM/proposta
@@ -36,10 +36,10 @@ export function statusLabel(s: string) {
 }
 
 type Tone = "slate" | "green" | "amber" | "red" | "blue" | "violet";
-const GREEN = ["APPROVED", "ACTIVE", "PAID", "WON", "ACCEPTED", "DONE", "COMPLETED", "CONFIRMED", "AUTHORIZED", "RECONCILED", "CLIENT_APPROVED", "INVOICED", "RECEIVED", "RESOLVED", "CLOSED", "POSTED", "CONTRACTED", "GREEN", "BILLED", "SETTLED", "FULFILLED", "ELIGIBLE", "APPLIED"];
+const GREEN = ["DELIVERED", "APPROVED", "ACTIVE", "PAID", "WON", "ACCEPTED", "DONE", "COMPLETED", "CONFIRMED", "AUTHORIZED", "RECONCILED", "CLIENT_APPROVED", "INVOICED", "RECEIVED", "RESOLVED", "CLOSED", "POSTED", "CONTRACTED", "GREEN", "BILLED", "SETTLED", "FULFILLED", "ELIGIBLE", "APPLIED"];
 const AMBER = ["PENDING", "PENDING_APPROVAL", "SUBMITTED", "PARTIAL", "TENTATIVE", "TRIAL", "TRIALING", "WAITING_CUSTOMER", "WAITING_THIRD_PARTY", "CLIENT_PENDING", "PARTIALLY_RECEIVED", "PARTIALLY_INVOICED", "QUOTING", "ON_HOLD", "YELLOW", "PROCESSING", "MEASURED", "REQUESTED", "MITIGATING", "READY"];
 const RED = ["REJECTED", "CANCELED", "LOST", "PAST_DUE", "SUSPENDED", "DIVERGENT", "BLOCKED", "EXPIRED", "RED", "ERROR", "REVERSED", "WRITTEN_OFF"];
-const BLUE = ["OPEN", "NEW", "IN_PROGRESS", "SENT", "ISSUED", "ORDERED", "PLANNING", "QUALIFIED", "TODO"];
+const BLUE = ["REGISTERED", "OPEN", "NEW", "IN_PROGRESS", "SENT", "ISSUED", "ORDERED", "PLANNING", "QUALIFIED", "TODO"];
 export function statusTone(s: string): Tone {
   if (GREEN.includes(s)) return "green";
   if (AMBER.includes(s)) return "amber";
