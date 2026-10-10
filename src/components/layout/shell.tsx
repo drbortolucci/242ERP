@@ -4,6 +4,7 @@ import { visibleNav } from "./nav";
 import type { Terms } from "@/domain/sectors";
 import type { Ctx } from "@/server/context";
 import { Bell, Search, Star } from "lucide-react";
+import { Toaster } from "@/components/ui/toast";
 
 export function AppShell({ ctx, children, orgs, unread, favorites, terms }: { ctx: Ctx; children: ReactNode; orgs: { id: string; name: string }[]; unread: number; favorites: { label: string; href: string }[]; terms: Terms }) {
   const nav = visibleNav(ctx.permissions, ctx.planModules, terms);
@@ -56,6 +57,7 @@ export function AppShell({ ctx, children, orgs, unread, favorites, terms }: { ct
         {!ctx.support && ctx.orgStatus === "PAST_DUE" && <div className="bg-amber-500 px-4 py-1 text-sm text-white">Assinatura com pagamento pendente. Regularize em Administração › Assinatura para evitar suspensão.</div>}
         {!ctx.support && (ctx.orgStatus === "SUSPENDED" || ctx.orgStatus === "CANCELED") && <div className="bg-red-700 px-4 py-1 text-sm text-white">Organização {ctx.orgStatus === "SUSPENDED" ? "suspensa" : "cancelada"}: dados preservados em modo somente leitura.</div>}
         <main className="mx-auto max-w-[1400px] p-4 lg:p-6">{children}</main>
+        <Toaster />
       </div>
     </div>
   );

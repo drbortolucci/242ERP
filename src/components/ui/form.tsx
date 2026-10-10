@@ -3,6 +3,7 @@ import { createContext, startTransition, useActionState, useContext, useEffect, 
 import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { ActionState } from "@/server/action";
+import { pushToast } from "./toast";
 
 type Action = (prev: ActionState | undefined, fd: FormData) => Promise<ActionState>;
 
@@ -115,13 +116,18 @@ export function FormGrid({ children, cols = 2 }: { children: ReactNode; cols?: 1
 
 /** Botão que dispara uma Server Action simples (formulário oculto) com confirmação opcional. */
 export function ActionButton({ action, fields, children, variant = "secondary", confirm }: { action: Action; fields: Record<string, string>; children: ReactNode; variant?: "primary" | "secondary" | "danger"; confirm?: string }) {
-  const [state, formAction] = useActionState(action, undefined);
+  // O botão costuma sumir quando a ação muda a situação do registro: o resultado também vai para o aviso global
+  const [state, formAction] = useActionState(async (prev: ActionState | undefined, fd: FormData) => {
+    const r = await action(prev, fd);
+    if (r?.error) pushToast("error", r.error);
+    else if (r?.ok && r.message) pushToast("success", r.message);
+    return r;
+  }, undefined);
   return (
     <form action={formAction} className="inline-flex flex-col items-start">
       {Object.entries(fields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
       <SubmitButton variant={variant} confirm={confirm}>{children}</SubmitButton>
-      {state?.error && <span role="alert" className="mt-1 max-w-xs text-xs text-red-700">{state.error}</span>}
-      {state?.ok && state.message && <span role="status" className="mt-1 text-xs text-emerald-700">{state.message}</span>}
+      {state?.error && <span className="sr-only">Erro: veja o aviso</span>}
     </form>
   );
 }
