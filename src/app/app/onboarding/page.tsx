@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { sectorProfile } from "@/domain/sectors";
 import { PageHeader, Card, Notice } from "@/components/ui/page";
 import { ActionForm, Checkbox, FormGrid, Input, Select, SubmitButton } from "@/components/ui/form";

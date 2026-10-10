@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { getTerms } from "@/modules/sectors/service";
 import { PageHeader, Card, StatusBadge } from "@/components/ui/page";
 import { DataTable, Pagination, Toolbar } from "@/components/ui/table";

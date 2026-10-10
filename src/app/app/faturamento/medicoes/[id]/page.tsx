@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Notice, Badge } from "@/components/ui/page";

@@ -1,3 +1,4 @@
+/* global process, URL, console */
 // Varredura de links: entra com cada perfil de demonstração, percorre todas as páginas
 // alcançáveis por links internos e registra status HTTP, erros de console/página e telas de erro.
 // Uso: BASE=http://localhost:3300 DEMO_PASSWORD=... node scripts/crawl.mjs > crawl.json

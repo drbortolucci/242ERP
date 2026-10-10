@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, Card, StatusBadge, Badge, Notice, EmptyState } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
 import { ActionForm, Checkbox, Input, SubmitButton, Textarea } from "@/components/ui/form";

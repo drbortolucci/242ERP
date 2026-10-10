@@ -18,7 +18,9 @@ export interface Section { key: string; title: string; metrics: Metric[] }
 const fmt = (v: { toString(): string } | number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v.toString()));
 
 export async function dashboardFor(ctx: Ctx): Promise<Section[]> {
-  const can = (p: string) => ctx.permissions.has(p);
+  // Permissão só conta se o módulo correspondente estiver contratado e habilitado (evita painéis de módulos fora do plano)
+  const MODULE_OF: Record<string, string> = { controlling: "controlling", period: "controlling", finance: "finance", treasury: "finance", billing: "billing", crm: "crm", proposal: "crm", project: "projects", ams: "ams", purchase: "procurement", time: "timesheet", expense: "expenses", resource: "resources" };
+  const can = (p: string) => ctx.permissions.has(p) && (!MODULE_OF[p.split(".")[0]] || ctx.planModules.includes(MODULE_OF[p.split(".")[0]]));
   const today = todayIn(ctx.timezone);
   const terms = await getTerms(ctx);
   const cur = monthStart(today);
