@@ -11,6 +11,8 @@ export interface Ctx {
   orgId: string;
   orgName: string;
   orgStatus: string;
+  /** Setor de atividade (perfil/terminologia) */
+  sector: string;
   timezone: string;
   currency: string;
   planModules: string[];
@@ -81,6 +83,7 @@ export async function buildCtx(userId: string, orgId: string, opts: BuildCtxOpti
     orgId,
     orgName: org.name,
     orgStatus: org.status,
+    sector: org.sector,
     timezone: org.timezone,
     currency: org.currency,
     planModules,
@@ -110,7 +113,7 @@ export async function systemCtx(orgId: string, permissions: Permission[]): Promi
   const modSetting = await prisma.orgSetting.findUnique({ where: { organizationId_key: { organizationId: orgId, key: "modules" } } });
   const enabled = (modSetting?.value as { enabled?: string[] } | null)?.enabled;
   return {
-    userId: SYSTEM_USER_ID, userName: "Sistema (tarefa agendada)", userEmail: "", orgId, orgName: org.name, orgStatus: org.status, timezone: org.timezone, currency: org.currency,
+    userId: SYSTEM_USER_ID, userName: "Sistema (tarefa agendada)", userEmail: "", orgId, orgName: org.name, orgStatus: org.status, sector: org.sector, timezone: org.timezone, currency: org.currency,
     planModules: enabled ? org.plan.modules.filter((m) => enabled.includes(m) || m === "api") : org.plan.modules,
     membershipId: "system", kind: "INTERNAL", permissions: new Set(permissions), roleKeys: ["system"], companyIds: null, partyId: null, professionalId: null,
     db: createTenantDb({ orgId, companyIds: null }), correlationId: randomUUID(), support: false, readOnly: org.status === "SUSPENDED" || org.status === "CANCELED",

@@ -10,10 +10,10 @@ export function uid(prefix = "t") {
   return `${prefix}${Date.now().toString(36)}${seq}`;
 }
 
-export async function newOrg(opts: { name?: string; plan?: string } = {}) {
+export async function newOrg(opts: { name?: string; plan?: string; sector?: string } = {}) {
   await ensurePlans();
   const email = `${uid("admin")}@teste.local`;
-  const { org, user } = await provisionOrganization({ orgName: opts.name ?? uid("Org "), userName: "Admin Teste", email, password: "SenhaForte123", planCode: opts.plan ?? "ENTERPRISE" });
+  const { org, user } = await provisionOrganization({ orgName: opts.name ?? uid("Org "), userName: "Admin Teste", email, password: "SenhaForte123", planCode: opts.plan ?? "ENTERPRISE", sector: opts.sector });
   const ctx = await buildCtx(user.id, org.id);
   return { org, user, ctx };
 }

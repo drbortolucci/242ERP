@@ -35,6 +35,8 @@ export const SETTING_DEFAULTS = {
     approvedAt: null as string | null,
     notes: "Reconhecimento gerencial conforme método do contrato. Requer aprovação do responsável da empresa.",
   },
+  /** Personalização da terminologia exibida (vazio = termo do setor). Ver src/domain/sectors.ts */
+  terminology: {} as Partial<Record<"project" | "projects" | "professional" | "professionals" | "ticket" | "tickets" | "supportArea" | "balances" | "systemField" | "moduleField", string>>,
   suspension: {
     graceDays: 15, // dias em inadimplência antes de suspender
     retentionDaysAfterCancel: 90,

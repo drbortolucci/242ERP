@@ -70,6 +70,8 @@ model Organization {
   canceledAt       DateTime? @db.Timestamptz(3)
   retentionUntil   DateTime? @db.Timestamptz(3)
   onboardingDone   Boolean   @default(false)
+  // Setor de atividade (perfil de partida e terminologia; ver src/domain/sectors.ts)
+  sector           String    @default("CONSULTING_IT")
   createdAt        DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
 
@@ -557,7 +559,8 @@ model ProjectType {
   id             String  @id @default(cuid())
   organizationId String
   name           String
-  templateKey    String? // ERP_IMPLEMENTATION | DIAGNOSTIC | ROLLOUT | INTEGRATION | TRAINING | ADVISORY | ALLOCATION | AMS
+  templateKey    String? // chave da biblioteca de modelos (src/domain/wbs-templates.ts)
+  wbsTemplate    Json? // modelo próprio da organização (fases → itens); tem precedência sobre templateKey
   active         Boolean @default(true)
 }
 

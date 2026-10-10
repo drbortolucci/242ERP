@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ActionForm, Input, SubmitButton } from "@/components/ui/form";
+import { ActionForm, Input, Select, SubmitButton } from "@/components/ui/form";
+import { DEFAULT_SECTOR, SECTOR_OPTIONS } from "@/domain/sectors";
 import { signupAction } from "../actions";
 import { prisma } from "@/server/db";
 import { ensurePlans } from "@/modules/saas/plans";
@@ -16,7 +17,8 @@ export default async function SignupPage() {
       <h1 className="mb-1 text-lg font-semibold">Criar organização</h1>
       <p className="mb-4 text-sm text-slate-600">Comece com um período de avaliação gratuito. Nenhum cartão é solicitado.</p>
       <ActionForm action={signupAction}>
-        <Input label="Nome da organização (sua consultoria)" name="orgName" required />
+        <Input label="Nome da organização (sua empresa)" name="orgName" required />
+        <Select label="Setor de atividade" name="sector" options={SECTOR_OPTIONS} defaultValue={DEFAULT_SECTOR} required hint="Define tipos de projeto, serviços, papéis e termos iniciais. Tudo pode ser alterado depois no configurador." />
         <Input label="Seu nome" name="userName" required />
         <Input label="E-mail" name="email" type="email" required autoComplete="email" />
         <Input label="Senha" name="password" type="password" required autoComplete="new-password" hint="Mínimo de 10 caracteres, com letras e números." />

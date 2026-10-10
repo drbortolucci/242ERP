@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "242ERP", template: "%s · 242ERP" },
-  description: "ERP SaaS para consultorias de serviços",
+  description: "ERP SaaS para empresas de serviços, com especialidade em consultorias",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

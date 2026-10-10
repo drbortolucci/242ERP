@@ -26,7 +26,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
             <Checkbox name="allCompanies" label="Todas as empresas" defaultChecked={m.allCompanies} />
             <div className="mt-1 grid gap-1 md:grid-cols-3">{companies.map((c) => <Checkbox key={c.value} name="companyIds[]" value={c.value} label={c.label} defaultChecked={m.companyIds.includes(c.value)} />)}</div>
           </fieldset>
-          {m.kind === "INTERNAL" && <Select name="professionalId" label="Profissional vinculado (horas, despesas, portal do consultor)" options={professionals} placeholder="—" defaultValue={m.professionalId ?? ""} />}
+          {m.kind === "INTERNAL" && <Select name="professionalId" label="Profissional vinculado (horas, despesas, minha área)" options={professionals} placeholder="—" defaultValue={m.professionalId ?? ""} />}
           <SubmitButton>Salvar</SubmitButton>
         </ActionForm>
       </Card>

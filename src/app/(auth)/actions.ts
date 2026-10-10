@@ -41,6 +41,7 @@ const signupSchema = z.object({
   email: z.string().trim().email("E-mail inválido"),
   password: z.string().min(10, "Mínimo de 10 caracteres"),
   planCode: z.string().min(1),
+  sector: z.string().optional(),
   accept: z.literal("on", { errorMap: () => ({ message: "É necessário aceitar os termos de uso e a política de privacidade" }) }),
 });
 

@@ -120,7 +120,7 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
     permissions: P("master.read", "master.write", "project.read", "purchase.request", "purchase.write", "purchase.receive", "finance.read"),
   },
   {
-    key: "consultant", name: "Consultor", description: "Portal do consultor: horas, despesas, chamados",
+    key: "consultant", name: "Profissional (operação)", description: "Minha área: horas, despesas, chamados e atividades",
     permissions: P("time.write", "expense.write", "ams.read", "ams.write", "project.read", "purchase.request"),
   },
   {

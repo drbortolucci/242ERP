@@ -1,4 +1,5 @@
 import { PageHeader, Card, StatusBadge } from "@/components/ui/page";
+import { getTerms } from "@/modules/sectors/service";
 import { DataTable, Pagination, Toolbar } from "@/components/ui/table";
 import { requireCtx } from "@/server/auth/next";
 import { listProfessionals } from "@/modules/professionals/service";
@@ -15,6 +16,7 @@ export const metadata = { title: "Profissionais" };
 export default async function ProfessionalsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const s = await searchParams;
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   const q = pageQuery(s);
   const lk = await profLookups(ctx);
   const { rows, total } = await listProfessionals(ctx, q, { active: sp(s, "situacao"), employmentType: sp(s, "vinculo"), seniorityId: sp(s, "senioridade"), skillId: sp(s, "competencia") });
@@ -22,7 +24,7 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
   const canWrite = ctx.permissions.has("master.write") || ctx.permissions.has("resource.write");
   return (
     <>
-      <PageHeader title="Profissionais" subtitle="Banco de profissionais internos e externos. Custos têm acesso restrito." breadcrumbs={[{ label: "Cadastros" }, { label: "Profissionais" }]} />
+      <PageHeader title={terms.professionals} subtitle="Profissionais internos e externos. Custos têm acesso restrito." breadcrumbs={[{ label: "Cadastros" }, { label: terms.professionals }]} />
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <Toolbar base="/app/cadastros/profissionais" params={s} exportHref="/api/export/profissionais" filters={[

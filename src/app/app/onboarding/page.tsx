@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sectorProfile } from "@/domain/sectors";
 import { PageHeader, Card, Notice } from "@/components/ui/page";
 import { ActionForm, Checkbox, FormGrid, Input, Select, SubmitButton } from "@/components/ui/form";
 import { pagePerm } from "@/server/page-guard";
@@ -77,6 +78,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           <div><b>Unidades ({units.length})</b><ul className="mt-1 list-disc pl-5">{units.map((u) => <li key={u.id}>{u.name}</li>)}</ul><Link className="text-brand-700 underline" href="/app/config/unidades">Cadastrar unidades</Link></div>
           <div><b>Centros de custo ({ccs.length})</b><ul className="mt-1 list-disc pl-5">{ccs.map((u) => <li key={u.id}>{u.code} {u.name}</li>)}</ul><Link className="text-brand-700 underline" href="/app/config/centros-custo">Cadastrar centros de custo</Link></div>
         </div>
+        <p className="mt-4 text-sm">Setor de atividade: <b>{sectorProfile(ctx.sector).name}</b> — define tipos de projeto, serviços, papéis e termos iniciais. <Link className="text-brand-700 underline" href="/app/config/setor">Alterar setor ou terminologia</Link></p>
         <ActionForm action={structureStepAction} className="mt-4"><SubmitButton>Continuar</SubmitButton></ActionForm>
       </Card>
     );

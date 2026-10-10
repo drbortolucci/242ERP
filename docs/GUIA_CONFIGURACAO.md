@@ -1,11 +1,33 @@
 # Guia de configuração
 
-Ordem recomendada para colocar uma consultoria em operação. Todas as telas estão em **Configurador** (`/app/config`) e **Administração** (`/app/admin`); cada alteração é auditada.
+Ordem recomendada para colocar uma empresa de serviços em operação. Todas as telas estão em **Configurador** (`/app/config`) e **Administração** (`/app/admin`); cada alteração é auditada.
+
+## 0. Setor de atividade e terminologia
+O 242ERP atende qualquer empresa de serviços; consultorias são a especialidade. O **setor** é escolhido no cadastro e pode ser trocado em **Configurador › Setor de atividade e terminologia** (`/app/config/setor`, permissão `settings.manage`).
+
+| Setor | Exemplos de tipos de projeto | Termos principais |
+|-------|------------------------------|-------------------|
+| Consultoria e serviços de TI (padrão) | Implementação ERP, rollout, integração, AMS | Consultores, Chamados, AMS |
+| Consultoria empresarial e de gestão | Diagnóstico, planejamento estratégico, mentoria, assessoria recorrente | Solicitações, Assessoria recorrente |
+| Engenharia, arquitetura e serviços técnicos | Projeto técnico, viabilidade, gerenciamento de obra, laudo, manutenção | Ordens de serviço, Manutenção |
+| Agências de marketing, comunicação e design | Campanha, branding, site, fee mensal | Jobs, Solicitações, Fee mensal |
+| Escritórios contábeis, jurídicos e de auditoria | Rotina mensal, caso/processo, auditoria, parecer | Trabalhos, Atendimento recorrente |
+| Manutenção, facilities e serviços em campo | Instalação, manutenção, vistoria, equipe residente | Técnicos, Ordens de serviço, Manutenção |
+| Desenvolvimento de software e produtos digitais | Desenvolvimento, discovery/UX, squad, sustentação | Sustentação, Produto/Funcionalidade |
+| Educação corporativa, treinamentos e eventos | Curso/turma, programa, evento | Programas, Instrutores |
+| Outros serviços (genérico) | Projeto, serviço recorrente, alocação | Atendimentos, Serviços recorrentes |
+
+- **O que o setor muda**: apenas pontos de partida editáveis — tipos de projeto e modelos de WBS, papéis de equipe, catálogo de serviços (com modelo comercial e conta de receita), categorias de despesa, competências — e a terminologia do menu e das telas principais. Cálculos, controles, aprovações, faturamento e controladoria são os mesmos.
+- **Trocar de setor** acrescenta somente o que falta (por nome/código); nada existente é alterado ou removido. Desative nos cadastros o que não usar.
+- **Terminologia**: personalize projeto, profissional, chamado, área de atendimento recorrente, saldos e os campos "sistema"/"módulo" do chamado. Campo vazio volta ao termo do setor.
+- **Modelos de WBS**: cada tipo de projeto usa um modelo da biblioteca ou um **modelo próprio** em texto (`Fase | Item | tipo | % | aceite`, soma 100%).
+- **Contratos recorrentes com franquia** (modelo "Recorrente com franquia") servem a AMS, contratos de manutenção, fee mensal de agência e honorários mensais: franquia de horas, consumo, excedente e níveis de serviço funcionam igual em todos os setores.
+- Fora do escopo atual: agendamento de atendimentos por horário (clínicas, salões) e controle de estoque/produção.
 
 ## 1. Organização e acesso
 1. **Cadastro** (`/cadastro`): cria a organização, o administrador e o período de avaliação com a configuração padrão (perfis, plano de contas gerencial, funil, calendário, SLA, alçadas).
-2. **Onboarding** (`/app/onboarding`): empresa matriz (CNPJ validado), filiais, unidades de negócio, centros de custo, contas bancárias, checklist. Pode ser salvo e retomado.
-3. **Usuários e perfis** (`/app/admin/usuarios`): convide usuários com perfis-modelo (diretoria, comercial, PMO, AMS, recursos, financeiro, controladoria, compras, consultor, cliente) e, se necessário, restrinja as empresas que cada um enxerga. Ative MFA (TOTP) no perfil do usuário.
+2. **Onboarding** (`/app/onboarding`): confirme o setor de atividade; empresa matriz (CNPJ validado), filiais, unidades de negócio, centros de custo, contas bancárias, checklist. Pode ser salvo e retomado.
+3. **Usuários e perfis** (`/app/admin/usuarios`): convide usuários com perfis-modelo (diretoria, comercial, PMO, atendimento/AMS, recursos, financeiro, controladoria, compras, profissional de operação, cliente) e, se necessário, restrinja as empresas que cada um enxerga. Ative MFA (TOTP) no perfil do usuário.
 4. **Assinatura** (`/app/admin/assinatura`): plano e limites (usuários, empresas, armazenamento). Limites são verificados no servidor.
 
 ## 2. Cadastros-base

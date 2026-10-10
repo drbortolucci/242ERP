@@ -9,6 +9,7 @@ export const metadata = { title: "Configurador" };
 
 const SPECIAL = [
   { group: "Organização", items: [
+    { href: "/app/config/setor", title: "Setor de atividade e terminologia", description: "Perfil do setor de serviços, termos exibidos (projeto, chamado, profissional…) e modelos de WBS por tipo de projeto." },
     { href: "/app/admin/empresas", title: "Empresas, filiais e contas bancárias", description: "Entidades jurídicas, CNPJ, regime informado, endereço, contas." },
     { href: "/app/config/calendarios", title: "Calendários, feriados e capacidade", description: "Horas por dia da semana, janela de atendimento e feriados." },
     { href: "/app/config/politicas", title: "Políticas e módulos", description: "Segregação de funções, limites de horas, fechamento, módulos habilitados, reconhecimento de receita." },
@@ -18,7 +19,7 @@ const SPECIAL = [
     { href: "/app/config/tabelas-preco", title: "Tabelas de preços e custos", description: "Tarifas por papel/senioridade/serviço com vigência." },
     { href: "/app/config/condicoes-pagamento", title: "Condições de pagamento", description: "Parcelas em dias e percentuais (soma 100%)." },
   ] },
-  { group: "AMS", items: [{ href: "/app/config/sla", title: "Regras de SLA", description: "Prazos de resposta/solução por prioridade, pausas, reabertura e encerramento." }] },
+  { group: "Atendimento e contratos recorrentes", items: [{ href: "/app/config/sla", title: "Regras de SLA", description: "Prazos de resposta/solução por prioridade, pausas, reabertura e encerramento." }] },
   { group: "Integrações", items: [{ href: "/app/config/integracoes", title: "Integrações", description: "E-mail, NFS-e, assinatura eletrônica, bancos, contabilidade, API." }] },
 ];
 
@@ -28,7 +29,7 @@ export default async function ConfigIndex() {
   const groups = [...new Set([...SPECIAL.map((s) => s.group), ...CONFIG_GROUPS])];
   return (
     <>
-      <PageHeader title="Configurador central" subtitle="Parâmetros dos processos da consultoria. Alterações são auditadas; documentos emitidos preservam valores históricos (snapshot/vigência)." breadcrumbs={[{ label: "Início", href: "/app" }, { label: "Configurador" }]} />
+      <PageHeader title="Configurador central" subtitle="Parâmetros dos processos da empresa. Alterações são auditadas; documentos emitidos preservam valores históricos (snapshot/vigência)." breadcrumbs={[{ label: "Início", href: "/app" }, { label: "Configurador" }]} />
       <div className="space-y-6">
         {groups.map((g) => (
           <Card key={g} title={g}>

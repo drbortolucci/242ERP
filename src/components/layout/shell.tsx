@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { visibleNav } from "./nav";
+import type { Terms } from "@/domain/sectors";
 import type { Ctx } from "@/server/context";
 import { Bell, Search, Star } from "lucide-react";
 
-export function AppShell({ ctx, children, orgs, unread, favorites }: { ctx: Ctx; children: ReactNode; orgs: { id: string; name: string }[]; unread: number; favorites: { label: string; href: string }[] }) {
-  const nav = visibleNav(ctx.permissions, ctx.planModules);
+export function AppShell({ ctx, children, orgs, unread, favorites, terms }: { ctx: Ctx; children: ReactNode; orgs: { id: string; name: string }[]; unread: number; favorites: { label: string; href: string }[]; terms: Terms }) {
+  const nav = visibleNav(ctx.permissions, ctx.planModules, terms);
   return (
     <div className="min-h-screen lg:flex">
       <aside className="no-print border-b border-slate-800 bg-slate-900 text-slate-200 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-b-0">

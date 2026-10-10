@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTerms } from "@/modules/sectors/service";
 import { PageHeader, Card, Grid, Stat, StatusBadge, Notice } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
 import { requireCtx } from "@/server/auth/next";
@@ -8,9 +9,10 @@ import { addDays, civil, formatCivil, todayIn } from "@/lib/dates";
 import { formatQty, formatMoney, sum } from "@/lib/money";
 
 export const metadata = { title: "Minha área" };
-/** Portal do consultor: alocações, atividades, horas, chamados, despesas, aprovações pendentes e calendário. */
+/** Minha área do profissional: alocações, atividades, horas, chamados, despesas, aprovações pendentes e calendário. */
 export default async function MyArea() {
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   const pid = ctx.professionalId;
   if (!pid) return <><PageHeader title="Minha área" /><Notice tone="warn">Seu usuário não está vinculado a um profissional.</Notice></>;
   const today = todayIn(ctx.timezone);
@@ -41,7 +43,7 @@ export default async function MyArea() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title="Minhas alocações"><DataTable dense rows={allocs} columns={[{ key: "p", label: "Projeto", render: (a) => a.projectId ? <Link className="text-brand-700 underline" href={`/app/projetos/${a.projectId}`}>{proj.get(a.projectId)}</Link> : "—" }, { key: "per", label: "Período", render: (a) => `${formatCivil(a.startDate)} – ${formatCivil(a.endDate)}` }, { key: "h", label: "Horas", align: "right", render: (a) => formatQty(a.totalHours) }, { key: "s", label: "Situação", render: (a) => <StatusBadge status={a.status} /> }]} empty={<p className="text-sm text-slate-500">Sem alocações.</p>} /></Card>
         <Card title="Minhas atividades"><DataTable dense rows={tasks} columns={[{ key: "p", label: "Projeto", render: (t) => proj.get(t.projectId) }, { key: "n", label: "Atividade", render: (t) => `${t.wbsCode} ${t.name}` }, { key: "e", label: "Prazo", render: (t) => <span className={t.plannedEnd && t.plannedEnd < civil(today) ? "text-red-700" : ""}>{formatCivil(t.plannedEnd)}</span> }, { key: "s", label: "Situação", render: (t) => <StatusBadge status={t.status} /> }]} empty={<p className="text-sm text-slate-500">Sem atividades atribuídas.</p>} /></Card>
-        <Card title="Chamados"><DataTable dense rows={tickets} rowHref={(t) => `/app/ams/chamados/${t.id}`} columns={[{ key: "number", label: "Nº" }, { key: "title", label: "Título" }, { key: "priority", label: "Prior." }, { key: "s", label: "Situação", render: (t) => <StatusBadge status={t.status} /> }]} empty={<p className="text-sm text-slate-500">Nenhum.</p>} /></Card>
+        <Card title={terms.tickets}><DataTable dense rows={tickets} rowHref={(t) => `/app/ams/chamados/${t.id}`} columns={[{ key: "number", label: "Nº" }, { key: "title", label: "Título" }, { key: "priority", label: "Prior." }, { key: "s", label: "Situação", render: (t) => <StatusBadge status={t.status} /> }]} empty={<p className="text-sm text-slate-500">Nenhum.</p>} /></Card>
         <Card title="Calendário (ausências programadas)">{absences.length ? <ul className="text-sm">{absences.map((a) => <li key={a.id}>{a.type}: {formatCivil(a.startDate)} – {formatCivil(a.endDate)}</li>)}</ul> : <p className="text-sm text-slate-500">Sem ausências programadas.</p>}</Card>
       </div>
     </>

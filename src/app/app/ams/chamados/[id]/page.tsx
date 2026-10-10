@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTerms } from "@/modules/sectors/service";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Badge, Notice } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
@@ -27,6 +28,7 @@ const EVENT: Record<string, string> = { STATUS: "Situação", ASSIGN: "Atribuiç
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireCtx();
+  const terms = await getTerms(ctx);
   pagePerm(ctx, "ams.read");
   const t = await getTicket(ctx, id).catch(() => null);
   if (!t) notFound();
@@ -45,7 +47,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <PageHeader title={`${t.number} — ${t.title}`} subtitle={<span className="flex flex-wrap gap-2"><StatusBadge status={t.status} /><Badge tone={PRIORITY_TONE[t.priority]}>{t.priority}</Badge><Badge>{typeLabel(t.type)}</Badge>{t.reopenCount > 0 && <Badge tone="amber">reaberto {t.reopenCount}×</Badge>}</span>}
-        breadcrumbs={[{ label: "Chamados", href: "/app/ams/chamados" }, { label: t.number }]} />
+        breadcrumbs={[{ label: terms.tickets, href: "/app/ams/chamados" }, { label: t.number }]} />
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
           {can && (NEXT[t.status] ?? []).length > 0 && (
@@ -125,7 +127,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
             <DefinitionList items={[
               { label: "Cliente", value: <Link className="text-brand-700 underline" href={`/app/cadastros/clientes/${t.partyId}`}>{pn.get(t.partyId)}</Link> },
               { label: "Contrato", value: t.contractId ? <Link className="text-brand-700 underline" href={`/app/ams/saldos/${t.contractId}`}>{ct.get(t.contractId)}</Link> : "—" },
-              { label: "Sistema / módulo", value: [t.system, t.module].filter(Boolean).join(" / ") || "—" }, { label: "Categoria", value: t.category ?? "—" },
+              { label: `${terms.systemField} / ${terms.moduleField.toLowerCase()}`, value: [t.system, t.module].filter(Boolean).join(" / ") || "—" }, { label: "Categoria", value: t.category ?? "—" },
               { label: "Impacto × urgência", value: `${t.impact} × ${t.urgency}` }, { label: "Solicitante", value: t.openedByContactName ?? (t.openedByUserId ? users.get(t.openedByUserId) : "—") },
               { label: "Aberto em", value: formatInstant(t.openedAt, tz) }, { label: "Resolvido em", value: formatInstant(t.resolvedAt, tz) }, { label: "Encerrado em", value: formatInstant(t.closedAt, tz) },
               { label: "Responsável", value: prof.get(t.assigneeProfessionalId ?? "") ?? "não atribuído" }, { label: "Equipe", value: t.team ?? "—" },

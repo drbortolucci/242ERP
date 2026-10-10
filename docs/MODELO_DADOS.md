@@ -19,13 +19,13 @@ Fonte da verdade: [`prisma/schema.prisma`](../prisma/schema.prisma) (133 modelos
 ## Grupos
 
 ### Plataforma SaaS
-`Plan`, `Organization`, `Subscription`, `SaasInvoice`, `PlanChange`, `WebhookEvent`, `SupportAccessGrant`, `DataExport`, `Job`, `RateLimitBucket`.
+`Plan`, `Organization` (inclui `sector`, o setor de atividade), `Subscription`, `SaasInvoice`, `PlanChange`, `WebhookEvent`, `SupportAccessGrant`, `DataExport`, `Job`, `RateLimitBucket`.
 
 ### Identidade e acesso
 `User`, `Session`, `PasswordResetToken`, `Membership` (perfis, empresas permitidas, tipo INTERNAL/CLIENT, parte do cliente, profissional vinculado), `Role` (permissões), `Invitation`, `ApiKey` (hash SHA-256, escopos), `Notification`, `OutboundMessage` (caixa de saída simulada), `SavedFilter`, `Favorite`.
 
 ### Estrutura e configuração
-`Company` (matriz/filiais), `BusinessUnit`, `CostCenter`, `BankAccount`, `OnboardingState`, `DocumentSequence`, `OrgSetting`, `WorkCalendar`, `Holiday`, `Service`, `PipelineStage`, `LossReason`, `ProjectType`, `TeamRole`, `SeniorityLevel`, `Skill`, `PriceTable`/`PriceTableItem` (vigência), `ExpenseCategory`, `ManagerialAccount` (tipo + `systemKey` usada nas integrações internas), `PaymentTerm`, `PaymentMethod`, `ApprovalRule`/`ApprovalRequest`, `SlaPolicy`/`SlaTarget`, `DocumentTemplate`, `CustomFieldDef`, `FiscalServiceCode`, `WithholdingRule`, `IntegrationConfig` (apenas referência ao segredo), `Attachment`.
+`Company` (matriz/filiais), `BusinessUnit`, `CostCenter`, `BankAccount`, `OnboardingState`, `DocumentSequence`, `OrgSetting`, `WorkCalendar`, `Holiday`, `Service`, `PipelineStage`, `LossReason`, `ProjectType` (modelo de WBS da biblioteca em `templateKey` ou próprio em `wbsTemplate`), `TeamRole`, `SeniorityLevel`, `Skill`, `PriceTable`/`PriceTableItem` (vigência), `ExpenseCategory`, `ManagerialAccount` (tipo + `systemKey` usada nas integrações internas), `PaymentTerm`, `PaymentMethod`, `ApprovalRule`/`ApprovalRequest`, `SlaPolicy`/`SlaTarget`, `DocumentTemplate`, `CustomFieldDef`, `FiscalServiceCode`, `WithholdingRule`, `IntegrationConfig` (apenas referência ao segredo), `Attachment`.
 
 ### Cadastros
 `Party` (cliente, prospect, fornecedor, parceiro — papéis combináveis), `Contact`, `SupplierComplianceDoc`, `Professional` (vínculo, calendário, centro de custo, fornecedor para PJ), `ProfessionalSkill`, `CostRate` (custo/hora com vigência), `Absence`.

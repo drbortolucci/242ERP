@@ -29,6 +29,14 @@ A inicialização (web e worker) executa `assertConfig()` (`src/server/config-ch
 4. Verificar `GET /api/health` (200, `db: ok`).
 5. Criar o administrador da plataforma por procedimento controlado (não use o seed de demonstração em produção — ele se recusa a rodar com `APP_ENV=production`).
 
+## Homologação online (Vercel + Supabase)
+Ambiente para demonstração e testes de aceite, sem dados reais:
+- **Banco**: projeto Supabase (PostgreSQL) com usuário e esquema próprios (`erp`), fora do esquema exposto pela API pública do Supabase. Conexão pelo *pooler* em modo sessão: `postgresql://<usuario>.<ref>:<senha>@<pooler>:5432/postgres?schema=erp&connection_limit=5&pool_timeout=20`.
+- **Aplicação**: projeto Vercel ligado ao repositório. `vercel.json` usa `scripts/vercel-build.sh` (gera o Prisma, aplica migrações e, com `SEED_DEMO=1`, carrega os dados de demonstração uma única vez) e a região `iad1` (EUA-leste), a mesma do banco e das máquinas de build do Vercel — com o banco em outra região, a carga inicial fica lenta demais (cada consulta cruza o continente).
+- **Variáveis** (todas como segredo no Vercel): `DATABASE_URL`, `SESSION_SECRET` (≥ 32 caracteres), `APP_ENV=staging`, `APP_URL` (URL HTTPS do Vercel), `STORAGE_DIR=/tmp/storage`, `DEMO_PASSWORD` (senha forte, exclusiva do ambiente — o seed se recusa a usar a senha local) e `SEED_DEMO=1`.
+- **Transações**: com banco remoto cada consulta leva alguns milissegundos; os limites de transação do Prisma foram elevados (`DB_TX_MAX_WAIT_MS`, padrão 10 s; `DB_TX_TIMEOUT_MS`, padrão 60 s) para que aprovações em lote, sincronização do razão e faturamento não expirem. Use `connection_limit` ≥ 5 na URL do banco.
+- **Limitações**: no Vercel não há worker contínuo nem disco persistente — tarefas agendadas (varredura de SLA, apuração diária, recorrências) não rodam sozinhas e anexos enviados se perdem entre execuções. Para produção use a imagem Docker (aplicação + worker) com volume persistente, como descrito acima.
+
 ## Backup e restauração
 - **Banco**: backup diário completo + PITR (WAL) com retenção mínima de 30 dias; teste de restauração mensal em ambiente isolado.
   ```bash

@@ -1,6 +1,6 @@
 /**
- * Provedor de pagamentos de ASSINATURAS SaaS (cobrança da plataforma às consultorias).
- * Não confundir com o faturamento de serviços das consultorias aos seus clientes.
+ * Provedor de pagamentos de ASSINATURAS SaaS (cobrança da plataforma às organizações clientes).
+ * Não confundir com o faturamento de serviços das organizações aos seus próprios clientes.
  */
 import { randomUUID } from "node:crypto";
 import { hmacSha256, safeEqual } from "../auth/crypto";
