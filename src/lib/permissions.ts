@@ -50,6 +50,11 @@ export const PERMISSIONS = {
   "ams.read": "Consultar chamados",
   "ams.write": "Atender chamados",
   "ams.manage": "Gerir contratos AMS, SLA e saldos",
+  // Estoque e vendas de produtos
+  "inventory.read": "Consultar produtos, saldos e movimentos de estoque",
+  "inventory.write": "Manter produtos, depósitos e transferências",
+  "inventory.adjust": "Ajustes, consumo, saldo inicial e inventário de estoque",
+  "sales.goods": "Pedidos de venda de produtos (confirmar, entregar, cancelar)",
   // Faturamento e financeiro
   "billing.read": "Consultar medições e faturamento",
   "billing.measure": "Gerar medições",
@@ -78,7 +83,7 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[];
 
 const P = (...p: Permission[]) => p;
 
-const READ_OPS = P("master.read", "crm.read", "contract.read", "project.read", "resource.read", "ams.read", "billing.read", "finance.read", "controlling.read");
+const READ_OPS = P("master.read", "crm.read", "contract.read", "project.read", "resource.read", "ams.read", "billing.read", "finance.read", "controlling.read", "inventory.read");
 
 /** Perfis padrão (copiados para cada organização e editáveis). */
 export const ROLE_TEMPLATES: { key: string; name: string; description: string; permissions: Permission[] }[] = [
@@ -93,7 +98,7 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   },
   {
     key: "sales", name: "Comercial", description: "CRM, propostas e pedidos",
-    permissions: P("master.read", "master.write", "crm.read", "crm.write", "proposal.write", "contract.read", "contract.write", "project.read", "ams.read", "billing.read", "margin.view"),
+    permissions: P("master.read", "master.write", "crm.read", "crm.write", "proposal.write", "contract.read", "contract.write", "project.read", "ams.read", "billing.read", "margin.view", "inventory.read", "sales.goods"),
   },
   {
     key: "pmo", name: "Gestor de projetos/PMO", description: "Projetos, recursos, horas e medições",
@@ -117,7 +122,11 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   },
   {
     key: "purchasing", name: "Compras", description: "Requisições, cotações, pedidos e aceites",
-    permissions: P("master.read", "master.write", "project.read", "purchase.request", "purchase.write", "purchase.receive", "finance.read"),
+    permissions: P("master.read", "master.write", "project.read", "purchase.request", "purchase.write", "purchase.receive", "finance.read", "inventory.read", "inventory.write"),
+  },
+  {
+    key: "stock_keeper", name: "Estoque e expedição", description: "Produtos, depósitos, recebimentos, inventário e entregas",
+    permissions: P("master.read", "inventory.read", "inventory.write", "inventory.adjust", "purchase.receive", "sales.goods", "project.read"),
   },
   {
     key: "consultant", name: "Profissional (operação)", description: "Minha área: horas, despesas, chamados e atividades",

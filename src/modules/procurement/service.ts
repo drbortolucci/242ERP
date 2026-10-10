@@ -16,6 +16,7 @@ import { openApprovals, registerApprovalHandler } from "../approvals/service";
 import { threeWayMatch } from "@/domain/three-way-match";
 import type { TenantTx } from "@/server/tenant-db";
 import { notify, usersWithPermission } from "@/server/notify";
+import { postMovement } from "../inventory/stock";
 
 const arr = (v: unknown) => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 const KINDS = ["SERVICE", "PROFESSIONAL", "LICENSE", "SUBSCRIPTION", "EQUIPMENT", "MATERIAL"] as const;
@@ -131,8 +132,9 @@ export async function addQuotation(ctx: Ctx, i: z.infer<typeof quotationSchema>)
 export const poSchema = z.object({
   companyId: z.string().min(1), supplierPartyId: z.string().min(1), requisitionId: zOptId, quotationId: zOptId, projectId: zOptId, costCenterId: zOptId, accountId: zOptId,
   kind: z.enum(["ONE_OFF", "SUBCONTRACT", "PJ_PROFESSIONAL", "RECURRING", "LICENSE"]).default("ONE_OFF"), orderDate: zDate, startDate: zOptDate, endDate: zOptDate, paymentTermId: zOptId,
-  advanceAmount: zDecimal, tolerancePct: zDecimal, notes: zOptStr,
+  advanceAmount: zDecimal, tolerancePct: zDecimal, notes: zOptStr, warehouseId: zOptId,
   lineKind: z.preprocess(arr, z.array(z.string())), lineDescription: z.preprocess(arr, z.array(z.string())), lineQuantity: z.preprocess(arr, z.array(z.string())), linePrice: z.preprocess(arr, z.array(z.string())),
+  lineProduct: z.preprocess(arr, z.array(z.string())).optional(),
 });
 export type PoInput = z.infer<typeof poSchema>;
 
@@ -141,7 +143,12 @@ export async function createPurchaseOrder(ctx: Ctx, i: PoInput) {
   requireWritable(ctx);
   const sup = await ctx.db.party.findFirst({ where: { id: i.supplierPartyId, isSupplier: true } });
   if (!sup || !sup.active) throw validation("Fornecedor inválido ou inativo.");
-  let lines = i.lineDescription.map((d, idx) => ({ kind: i.lineKind[idx] || "SERVICE", description: d.trim(), quantity: qty(n(i.lineQuantity[idx]) || "1"), unitPrice: rate(n(i.linePrice[idx])) })).filter((l) => l.description);
+  const productIds = (i.lineProduct ?? []).filter(Boolean);
+  const products = productIds.length ? await ctx.db.product.findMany({ where: { id: { in: productIds } } }) : [];
+  let lines: { kind: string; description: string; quantity: ReturnType<typeof qty>; unitPrice: ReturnType<typeof rate>; productId?: string | null }[] = i.lineDescription.map((d, idx) => {
+    const p = products.find((x) => x.id === i.lineProduct?.[idx]);
+    return { kind: p ? "MATERIAL" : i.lineKind[idx] || "SERVICE", description: (d.trim() || (p ? `${p.code} — ${p.name}` : "")), quantity: qty(n(i.lineQuantity[idx]) || "1"), unitPrice: rate(n(i.linePrice[idx])), productId: p?.id ?? null };
+  }).filter((l) => l.description);
   let requisition = null;
   if (i.quotationId) {
     const q = await ctx.db.quotation.findFirst({ where: { id: i.quotationId } });
@@ -154,6 +161,12 @@ export async function createPurchaseOrder(ctx: Ctx, i: PoInput) {
   }
   if (!lines.length) throw validation("Informe ao menos um item.");
   if (lines.some((l) => l.quantity.lte(0) || l.unitPrice.lte(0))) throw validation("Quantidade e preço devem ser maiores que zero.");
+  const stockLines = lines.filter((l) => l.productId && products.find((p) => p.id === l.productId)?.tracksStock);
+  if (stockLines.length) {
+    if (!i.warehouseId) throw validation("Informe o depósito de entrada dos itens de estoque.");
+    const wh = await ctx.db.warehouse.findFirst({ where: { id: i.warehouseId, active: true } });
+    if (!wh || wh.companyId !== i.companyId) throw validation("Depósito inválido para a empresa do pedido.");
+  }
   const total = money(sum(lines.map((l) => money(l.quantity.times(l.unitPrice))))); // Σ arredondar(qtd × preço, 2) — igual às linhas
   if (money(i.advanceAmount).gt(total)) throw validation("Adiantamento maior que o pedido.");
   const projectId = i.projectId ?? requisition?.projectId ?? null;
@@ -165,11 +178,11 @@ export async function createPurchaseOrder(ctx: Ctx, i: PoInput) {
     const po = await tx.purchaseOrder.create({
       data: {
         organizationId: ctx.orgId, companyId: i.companyId, number, supplierPartyId: sup.id, requisitionId: requisition?.id ?? i.requisitionId ?? null, quotationId: i.quotationId ?? null, projectId, costCenterId, accountId: i.accountId ?? requisition?.accountId ?? null,
-        kind: i.kind, orderDate: civil(i.orderDate), startDate: i.startDate ? civil(i.startDate) : null, endDate: i.endDate ? civil(i.endDate) : null, paymentTermId: i.paymentTermId ?? null,
+        warehouseId: stockLines.length ? i.warehouseId ?? null : null, kind: i.kind, orderDate: civil(i.orderDate), startDate: i.startDate ? civil(i.startDate) : null, endDate: i.endDate ? civil(i.endDate) : null, paymentTermId: i.paymentTermId ?? null,
         totalAmount: total, advanceAmount: money(i.advanceAmount), tolerancePct: dec(i.tolerancePct), notes: i.notes ?? null, createdById: ctx.userId,
       },
     });
-    await tx.purchaseOrderLine.createMany({ data: lines.map((l) => ({ organizationId: ctx.orgId, purchaseOrderId: po.id, kind: l.kind, description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: money(l.quantity.times(l.unitPrice)) })) });
+    await tx.purchaseOrderLine.createMany({ data: lines.map((l) => ({ organizationId: ctx.orgId, purchaseOrderId: po.id, kind: l.kind, productId: l.productId ?? null, description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: money(l.quantity.times(l.unitPrice)) })) });
     if (i.quotationId) await tx.quotation.update({ where: { id: i.quotationId }, data: { selected: true } });
     if (requisition) await tx.purchaseRequisition.update({ where: { id: requisition.id }, data: { status: "ORDERED" } });
     await audit(ctx, { action: "po.create", entity: "PurchaseOrder", entityId: po.id, companyId: i.companyId, changes: { supplier: sup.name, total: total.toString(), kind: i.kind } }, tx);
@@ -272,7 +285,15 @@ export async function postReceipt(ctx: Ctx, i: z.infer<typeof receiptSchema>) {
     for (const it of items) {
       const l = it.line!;
       const amount = money(it.q.times(dec(l.unitPrice)));
-      await tx.goodsReceiptLine.create({ data: { organizationId: ctx.orgId, receiptId: rc.id, poLineId: l.id, quantity: it.q.times(sign), amount: amount.times(sign) } });
+      const grl = await tx.goodsReceiptLine.create({ data: { organizationId: ctx.orgId, receiptId: rc.id, poLineId: l.id, quantity: it.q.times(sign), amount: amount.times(sign) } });
+      // Item de estoque: entrada (ou devolução) no depósito do pedido ao preço do pedido
+      if (l.productId && po.warehouseId) {
+        const p = await tx.product.findFirst({ where: { id: l.productId } });
+        if (p?.tracksStock) {
+          if (sign > 0) await postMovement(ctx, tx, { productId: p.id, warehouseId: po.warehouseId, date: i.date, type: "PURCHASE_RECEIPT", direction: "IN", quantity: it.q, unitCost: dec(l.unitPrice), sourceType: "GOODS_RECEIPT", sourceId: rc.id, partyId: po.supplierPartyId, projectId: po.projectId, reason: `Recebimento ${number} — pedido ${po.number}`, idempotencyKey: `GRL:${grl.id}` });
+          else await postMovement(ctx, tx, { productId: p.id, warehouseId: po.warehouseId, date: i.date, type: "PURCHASE_RETURN", direction: "OUT", quantity: it.q, totalCost: amount, sourceType: "GOODS_RECEIPT", sourceId: rc.id, partyId: po.supplierPartyId, reason: `Devolução ${number} — pedido ${po.number}`, idempotencyKey: `GRL:${grl.id}` });
+        }
+      }
       await tx.purchaseOrderLine.update({ where: { id: l.id }, data: { receivedQty: dec(l.receivedQty).plus(it.q.times(sign)), receivedAmount: dec(l.receivedAmount).plus(amount.times(sign)) } });
     }
     const after = await tx.purchaseOrderLine.findMany({ where: { purchaseOrderId: po.id } });
@@ -280,7 +301,7 @@ export async function postReceipt(ctx: Ctx, i: z.infer<typeof receiptSchema>) {
     const none = after.every((l) => dec(l.receivedQty).lte(0));
     await tx.purchaseOrder.update({ where: { id: po.id }, data: { status: full ? "RECEIVED" : none ? "APPROVED" : "PARTIALLY_RECEIVED" } });
     // Equipamentos e licenças recebidos entram no controle de ativos
-    if (sign > 0) for (const it of items.filter((x) => ["EQUIPMENT", "LICENSE", "SUBSCRIPTION", "MATERIAL"].includes(x.line!.kind))) {
+    if (sign > 0) for (const it of items.filter((x) => !x.line!.productId && ["EQUIPMENT", "LICENSE", "SUBSCRIPTION", "MATERIAL"].includes(x.line!.kind))) {
       await tx.asset.create({ data: { organizationId: ctx.orgId, companyId: po.companyId, kind: it.line!.kind === "SUBSCRIPTION" ? "SUBSCRIPTION" : it.line!.kind, name: it.line!.description, supplierPartyId: po.supplierPartyId, purchaseOrderId: po.id, projectId: po.projectId, quantity: it.q, cost: money(it.q.times(dec(it.line!.unitPrice))), acquiredAt: civil(i.date), renewalDate: ["LICENSE", "SUBSCRIPTION"].includes(it.line!.kind) ? po.endDate : null, status: "IN_STOCK" } });
     }
     await audit(ctx, { action: i.kind === "RETURN" ? "receipt.return" : "receipt.post", entity: "PurchaseOrder", entityId: po.id, companyId: po.companyId, changes: { receipt: number, items: items.length } }, tx);

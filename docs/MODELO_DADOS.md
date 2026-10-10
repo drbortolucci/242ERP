@@ -39,6 +39,9 @@ Fonte da verdade: [`prisma/schema.prisma`](../prisma/schema.prisma) (133 modelos
 ### Suprimentos
 `PurchaseRequisition`/`RequisitionLine`, `Quotation`/`QuotationLine`, `PurchaseOrder`/`PurchaseOrderLine` (recebido e faturado por linha), `GoodsReceipt`/`GoodsReceiptLine`, `SupplierInvoice` (resultado da conferência de 3 vias), `SupplierEvaluation`, `Asset`/`AssetMovement`.
 
+### Estoque e vendas de produtos
+`ProductCategory`, `Product`, `Warehouse` (por empresa), `StockBalance` (saldo, reserva, custo médio e valor por produto × depósito, atualizado sob bloqueio na transação do movimento), `StockMovement` (imutável, cronológico por produto/depósito, com saldo após o movimento; estorno por `reversalOfId`), `InventoryCount`/`InventoryCountLine`, `ProductOrder`/`ProductOrderLine`. Vínculos: `PurchaseOrder.warehouseId`, `PurchaseOrderLine.productId`, `Receivable.productOrderId`.
+
 ### AMS
 `Ticket` (prazos, pausas, violações, escalonamento), `TicketComment` (PUBLIC/INTERNAL), `TicketEvent`, `KnowledgeArticle`, `HourBankEntry` (razão de horas: crédito, débito FIFO, expiração, ajuste, excedente com decisão).
 

@@ -27,6 +27,10 @@ Cada etapa abaixo indica a tela, quem executa e o controle aplicado. Os dados de
 | 6 | Pagamento | Financeiro › Contas a pagar | Aprovação financeira (SoD), liquidação, aplicação de adiantamento |
 | 7 | Apropriação | Projeto / Controladoria | Terceiros no projeto pela NF aprovada; PJ pelas horas; compromisso aberto no EAC e fluxo de caixa |
 
+## 2.1 Mercadorias: compra, estoque e venda
+Pedido de compra com itens de estoque (depósito de entrada) → aprovação → recebimento (entrada ao preço do pedido; atualiza custo médio) → documento do fornecedor (3 vias) → conta a pagar.
+Pedido de venda de produtos → confirmação (reserva o disponível) → entrega (baixa ao custo médio, contas a receber pela condição) → recebimento no financeiro. Cancelamento após a entrega devolve o estoque ao mesmo custo e cancela os títulos sem liquidação. A nota fiscal de mercadorias é emitida pelo provedor fiscal homologado — o pedido não é documento fiscal.
+
 ## 3. Sustentação (AMS)
 Chamado (equipe, portal ou API) → prioridade (impacto × urgência) → prazos de SLA em horário comercial → atendimento (pausas aguardando cliente/terceiro) → resolução → confirmação do cliente / encerramento automático → avaliação. Horas no chamado consomem a franquia (FIFO por vencimento); excedente segue a política do contrato e é medido no faturamento.
 

@@ -52,6 +52,13 @@ O sistema **não** traz alíquotas, códigos de serviço ou regras de retenção
 - **Condições de pagamento** (parcelas em % somando 100).
 - **Integração NFS-e** (Configurador › Integrações): provedor e nome do segredo no cofre. Em desenvolvimento/teste a emissão é sempre simulada.
 
+## 4.1 Estoque
+1. Cadastre os depósitos (Estoque › Depósitos) por empresa. Evite "aceita saldo negativo": distorce o custo médio.
+2. Cadastre os produtos (código, unidade, preço, mínimo/máximo). NCM e origem são informados pela empresa; o sistema não valida classificação fiscal.
+3. Lance o saldo inicial de cada produto/depósito (Estoque › Movimentos › Saldo inicial) com o custo unitário de implantação.
+4. Compras de mercadorias: no pedido de compra, escolha o produto e o depósito de entrada; o recebimento dá entrada no estoque.
+5. Atribua o perfil "Estoque e expedição" a quem recebe, conta e entrega mercadorias.
+
 ## 5. Contratos e AMS
 - Modelo comercial, método de reconhecimento de receita, exigência de OC e de aprovação do cliente (horas/medições), alíquota de dedução gerencial (informada pela empresa).
 - AMS: política de SLA, mensalidade, franquia, banco de horas (não acumula / acumula N meses / pré-pago), política de excedente (cobrar, exigir aprovação, absorver), limite de alerta de saldo.
