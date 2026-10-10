@@ -32,13 +32,18 @@ export async function requestMeta() {
 
 export const getSession = cache(async () => resolveSession(await getSessionToken()));
 
+/** Acesso efetivo do usuário da requisição, disponível de forma síncrona depois que o contexto foi carregado. */
+export const requestAccess = cache((): { perms: Set<string>; modules: string[] } | { perms: null; modules: null } => ({ perms: null, modules: null }));
+
 /** Contexto da requisição atual (memoizado por requisição). */
 export const getCtx = cache(async (): Promise<Ctx | null> => {
   const s = await getSession();
   if (!s || s.mfaPending || !s.organizationId) return null;
   try {
     const h = await headers();
-    return await buildCtx(s.userId, s.organizationId, { support: !!s.supportGrantId, correlationId: h.get("x-correlation-id") ?? randomUUID() });
+    const ctx = await buildCtx(s.userId, s.organizationId, { support: !!s.supportGrantId, correlationId: h.get("x-correlation-id") ?? randomUUID() });
+    Object.assign(requestAccess(), { perms: ctx.permissions, modules: ctx.planModules });
+    return ctx;
   } catch {
     return null;
   }
