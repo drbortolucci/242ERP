@@ -2664,3 +2664,79 @@ model FiscalProductRule {
 
   @@index([organizationId, companyId])
 }
+
+// ----------------------------------------------------------------------------
+// Contabilidade (partidas dobradas)
+// Plano de contas contábil sugerido — a ser revisado e validado pelo contador responsável. Lançamentos automáticos
+// gerados de forma idempotente a partir das operações (por empresa e mês), lançamentos manuais balanceados e
+// estorno por lançamento inverso. Períodos fechados não recebem lançamentos.
+// ----------------------------------------------------------------------------
+
+model LedgerAccount {
+  id              String   @id @default(cuid())
+  organizationId  String
+  code            String
+  name            String
+  nature          String // ASSET | LIABILITY | EQUITY | REVENUE | EXPENSE
+  analytic        Boolean  @default(true) // sintéticas apenas agrupam
+  parentId        String?
+  // Código do plano referencial (SPED), informado pelo contador; o sistema não o define
+  referentialCode String?
+  systemKey       String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, systemKey])
+}
+
+// De-para: conta bancária / conta gerencial → conta contábil (configurável)
+model LedgerMapping {
+  id             String   @id @default(cuid())
+  organizationId String
+  sourceType     String // BANK_ACCOUNT | MANAGERIAL_ACCOUNT
+  sourceId       String
+  accountId      String
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([organizationId, sourceType, sourceId])
+}
+
+model JournalEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  companyId      String
+  number         String
+  date           DateTime @db.Date
+  description    String
+  origin         String // AUTO | MANUAL
+  sourceType     String?
+  sourceId       String?
+  dedupeKey      String?
+  status         String   @default("POSTED") // POSTED | REVERSED
+  reversalOfId   String?
+  reversalReason String?
+  createdById    String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, companyId, date])
+}
+
+model JournalLine {
+  id             String   @id @default(cuid())
+  organizationId String
+  entryId        String
+  companyId      String
+  date           DateTime @db.Date
+  accountId      String
+  debit          Decimal  @default(0) @db.Decimal(18, 2)
+  credit         Decimal  @default(0) @db.Decimal(18, 2)
+  costCenterId   String?
+  partyId        String?
+  memo           String?
+
+  @@index([organizationId, accountId, date])
+  @@index([organizationId, entryId])
+}

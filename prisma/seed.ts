@@ -9,6 +9,7 @@ import { seedDemo } from "./seed-demo";
 import { seedInventory } from "./seed-inventory";
 import { seedBanking } from "./seed-banking";
 import { seedFiscal } from "./seed-fiscal";
+import { seedAccounting } from "./seed-accounting";
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "Demo@2026local";
 const LOCAL = !["staging"].includes(process.env.APP_ENV ?? "");
@@ -30,6 +31,7 @@ async function main() {
   await seedInventory(pw);
   await seedBanking();
   await seedFiscal(pw);
+  await seedAccounting(pw);
   console.log(LOCAL ? `\nCredenciais de demonstração (somente ambiente local) — senha: ${DEMO_PASSWORD}` : "\nUsuários de demonstração (senha definida em DEMO_PASSWORD, não exibida):");
   const users = await prisma.user.findMany({ where: { email: { endsWith: ".local" } }, orderBy: { email: "asc" } });
   for (const u of users) console.log(`  ${u.email.padEnd(40)} ${u.name}`);
