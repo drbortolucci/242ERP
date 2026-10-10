@@ -55,6 +55,11 @@ export const PERMISSIONS = {
   "inventory.write": "Manter produtos, depósitos e transferências",
   "inventory.adjust": "Ajustes, consumo, saldo inicial e inventário de estoque",
   "sales.goods": "Pedidos de venda de produtos (confirmar, entregar, cancelar)",
+  // Fiscal
+  "fiscal.read": "Consultar documentos e regras fiscais",
+  "fiscal.manage": "Manter regras fiscais de produtos",
+  "fiscal.validate": "Registrar a validação de regras fiscais (responsável fiscal)",
+  "fiscal.issue": "Emitir, reprocessar e cancelar documentos fiscais",
   // Faturamento e financeiro
   "billing.read": "Consultar medições e faturamento",
   "billing.measure": "Gerar medições",
@@ -83,7 +88,7 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[];
 
 const P = (...p: Permission[]) => p;
 
-const READ_OPS = P("master.read", "crm.read", "contract.read", "project.read", "resource.read", "ams.read", "billing.read", "finance.read", "controlling.read", "inventory.read");
+const READ_OPS = P("master.read", "crm.read", "contract.read", "project.read", "resource.read", "ams.read", "billing.read", "finance.read", "controlling.read", "inventory.read", "fiscal.read");
 
 /** Perfis padrão (copiados para cada organização e editáveis). */
 export const ROLE_TEMPLATES: { key: string; name: string; description: string; permissions: Permission[] }[] = [
@@ -114,7 +119,7 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   },
   {
     key: "finance", name: "Financeiro", description: "Faturamento, títulos, tesouraria e conciliação",
-    permissions: P(...READ_OPS, "billing.measure", "billing.approve", "billing.issue", "billing.cancel", "finance.write", "payment.register", "payment.reverse", "treasury.manage", "data.export"),
+    permissions: P(...READ_OPS, "billing.measure", "billing.approve", "billing.issue", "billing.cancel", "finance.write", "payment.register", "payment.reverse", "treasury.manage", "data.export", "fiscal.read", "fiscal.issue"),
   },
   {
     key: "controller", name: "Controladoria", description: "Orçamento, P&L, rateios e fechamento",
@@ -123,6 +128,10 @@ export const ROLE_TEMPLATES: { key: string; name: string; description: string; p
   {
     key: "purchasing", name: "Compras", description: "Requisições, cotações, pedidos e aceites",
     permissions: P("master.read", "master.write", "project.read", "purchase.request", "purchase.write", "purchase.receive", "finance.read", "inventory.read", "inventory.write"),
+  },
+  {
+    key: "fiscal", name: "Responsável fiscal", description: "Regras fiscais (validação), códigos de serviço, retenções e documentos fiscais",
+    permissions: P("master.read", "billing.read", "finance.read", "inventory.read", "fiscal.read", "fiscal.manage", "fiscal.validate", "fiscal.issue"),
   },
   {
     key: "stock_keeper", name: "Estoque e expedição", description: "Produtos, depósitos, recebimentos, inventário e entregas",

@@ -2008,7 +2008,9 @@ model FiscalDocument {
   id                String    @id @default(cuid())
   organizationId    String
   companyId         String
-  billingDocumentId String
+  docType           String    @default("NFSE") // NFSE (serviços) | NFE (mercadorias)
+  billingDocumentId String?
+  productOrderId    String?
   provider          String
   environment       String // SANDBOX | PRODUCTION | SIMULATED
   idempotencyKey    String
@@ -2021,10 +2023,13 @@ model FiscalDocument {
   requestPayload    Json?
   responsePayload   Json?
   authorizedAt      DateTime? @db.Timestamptz(3)
+  cancelReason      String?
+  canceledAt        DateTime? @db.Timestamptz(3)
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status])
 }
 
 // ----------------------------------------------------------------------------
@@ -2627,4 +2632,35 @@ model ReconciliationRule {
   description    String
   active         Boolean  @default(true)
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
+}
+
+// Regra fiscal de produto (NF-e): INFORMADA E VALIDADA pelo responsável fiscal da empresa.
+// O sistema não define CFOP, CST/CSOSN nem alíquotas; apenas aplica o que foi cadastrado e validado.
+model FiscalProductRule {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String
+  name           String
+  productId      String? // regra específica do produto; sem produto, vale para o NCM informado
+  ncm            String?
+  cfop           String
+  icmsCst        String? // CST (regime normal) ou CSOSN (Simples Nacional), conforme o responsável fiscal
+  icmsRatePct    Decimal?  @db.Decimal(9, 4)
+  ipiCst         String?
+  ipiRatePct     Decimal?  @db.Decimal(9, 4)
+  pisCst         String?
+  pisRatePct     Decimal?  @db.Decimal(9, 4)
+  cofinsCst      String?
+  cofinsRatePct  Decimal?  @db.Decimal(9, 4)
+  notes          String?
+  validFrom      DateTime  @db.Date
+  validTo        DateTime? @db.Date
+  validatedBy    String?
+  validatedAt    DateTime? @db.Timestamptz(3)
+  active         Boolean   @default(true)
+  createdById    String
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([organizationId, companyId])
 }

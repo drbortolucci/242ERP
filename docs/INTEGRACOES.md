@@ -6,6 +6,7 @@ Toda integração externa passa por um **adaptador** com implementação **simul
 | Integração | Adaptador | Situação |
 |------------|-----------|----------|
 | Cobrança de assinaturas SaaS | `src/server/providers/payments.ts` | 🔌 Simulado + webhook HMAC idempotente (`/api/webhooks/payments/{provider}`); provedor real pendente |
+| NF-e (mercadorias) | `src/server/providers/fiscal.ts` (`issueProduct`), `src/modules/fiscal/service.ts` | 🔌 Simulado; emissão só com regra fiscal vigente e validada pelo responsável fiscal para cada item; provedor real homologado pendente |
 | NFS-e | `src/server/providers/fiscal.ts`, `src/modules/billing/fiscal.ts` | 🔌 Simulado com idempotência, tentativas e webhook HMAC (`/api/webhooks/fiscal`); provedor real + validação do responsável fiscal pendentes |
 | E-mail transacional | `src/server/providers/email.ts` | 🔌 Caixa de saída simulada (`OutboundMessage`) |
 | Extrato bancário | `src/domain/statement.ts`, `src/modules/banking/service.ts` | ✅ Importação de arquivo CSV/OFX e conciliação automática (valor/data e regras por descrição); 🔌 API de extrato do banco pendente |

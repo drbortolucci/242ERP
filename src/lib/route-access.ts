@@ -34,6 +34,8 @@ export const ROUTE_RULES: RouteRule[] = [
   // Estoque
   { prefix: "/app/estoque/vendas", any: ["sales.goods", "inventory.read"], module: "inventory" },
   { prefix: "/app/estoque", any: ["inventory.read"], module: "inventory" },
+  // Fiscal
+  { prefix: "/app/fiscal", any: ["fiscal.read"] },
   // Atendimento recorrente
   { prefix: "/app/ams/saldos", any: ["ams.manage"], module: "ams" },
   { prefix: "/app/ams", any: ["ams.read"], module: "ams" },
