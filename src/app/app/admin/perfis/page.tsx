@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, Card } from "@/components/ui/page";
 import { ActionForm, Checkbox, Input, SubmitButton } from "@/components/ui/form";
 import { pagePerm } from "@/server/page-guard";

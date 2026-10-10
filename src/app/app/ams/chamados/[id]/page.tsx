@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { getTerms } from "@/modules/sectors/service";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Badge, Notice } from "@/components/ui/page";

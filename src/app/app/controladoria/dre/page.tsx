@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, Card, Stat, Grid } from "@/components/ui/page";
 import { requireCtx } from "@/server/auth/next";
 import { pagePerm } from "@/server/page-guard";

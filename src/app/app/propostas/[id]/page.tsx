@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, StatusBadge, Notice, Tabs } from "@/components/ui/page";
 import { ActionButton, ActionForm, Input, SubmitButton } from "@/components/ui/form";
