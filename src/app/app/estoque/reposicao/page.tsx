@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, Notice } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";
 import { requireCtx } from "@/server/auth/next";

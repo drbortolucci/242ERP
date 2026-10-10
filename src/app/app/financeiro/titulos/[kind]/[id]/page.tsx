@@ -11,8 +11,9 @@ import { formatCivil, todayIn } from "@/lib/dates";
 import { dec, formatMoney } from "@/lib/money";
 import { settleAction, reverseSettlementAction, approvePayableAction, applyAdvanceAction, reverseApplicationAction, offsetAction, reverseOffsetAction } from "../../../actions";
 
-function originLink(sourceType: string | undefined, sourceId: string | null | undefined, billingDocumentId?: string | null) {
+function originLink(sourceType: string | undefined, sourceId: string | null | undefined, billingDocumentId?: string | null, productOrderId?: string | null) {
   if (billingDocumentId) return { href: `/app/faturamento/cobrancas/${billingDocumentId}`, label: "Documento de cobrança" };
+  if (productOrderId) return { href: `/app/estoque/vendas/${productOrderId}`, label: "Pedido de venda de produtos" };
   if (!sourceType || !sourceId) return null;
   if (sourceType === "SUPPLIER_INVOICE") return { href: "/app/suprimentos/notas", label: "Documento do fornecedor" };
   if (sourceType === "SUPPLIER_ADVANCE") return { href: `/app/suprimentos/pedidos/${sourceId}`, label: "Adiantamento do pedido de compra" };
@@ -44,8 +45,8 @@ export default async function TitlePage({ params }: { params: Promise<{ kind: st
   const accName = new Map(accs.map((a) => [a.value, a.label]));
   const open = dec(t.openAmount);
   const can = (p: string) => ctx.permissions.has(p);
-  const p = t as { sourceType?: string; sourceId?: string | null; billingDocumentId?: string | null; approvedById?: string | null };
-  const origin = originLink(p.sourceType, p.sourceId, p.billingDocumentId);
+  const p = t as { sourceType?: string; sourceId?: string | null; billingDocumentId?: string | null; productOrderId?: string | null; approvedById?: string | null };
+  const origin = originLink(p.sourceType, p.sourceId, p.billingDocumentId, p.productOrderId);
   const settleable = ["OPEN", "PARTIAL"].includes(t.status) && can("payment.register");
   return (
     <>
