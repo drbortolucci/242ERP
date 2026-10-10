@@ -13,8 +13,9 @@ test("financeiro: cobrança bancária simulada é baixada e liquida o título; c
   await expect(page.getByText(/Linha digitável|PIX copia e cola/)).toBeVisible();
   await expect(page.getByText(/não pagável/).first()).toBeVisible();
   await page.getByRole("button", { name: "Simular pagamento" }).click();
-  await expect(page.getByText(/título liquidado/)).toBeVisible();
-  await expect(page.getByText("Pago").first()).toBeVisible();
+  // a cobrança passa a "Pago" e o título fica liquidado (liquidação registrada na conta da cobrança)
+  await expect(page.getByRole("row", { name: /BOL-\d+.*Pago/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Simular pagamento" })).toHaveCount(0);
 
   await page.goto("/app/financeiro/conciliacao");
   await expect(page.getByRole("heading", { name: "Conciliação automática" })).toBeVisible();
