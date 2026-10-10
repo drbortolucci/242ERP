@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";

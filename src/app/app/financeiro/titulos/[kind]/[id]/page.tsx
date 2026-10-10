@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Badge } from "@/components/ui/page";
@@ -16,8 +16,10 @@ function originLink(sourceType: string | undefined, sourceId: string | null | un
   if (!sourceType || !sourceId) return null;
   if (sourceType === "SUPPLIER_INVOICE") return { href: "/app/suprimentos/notas", label: "Documento do fornecedor" };
   if (sourceType === "SUPPLIER_ADVANCE") return { href: `/app/suprimentos/pedidos/${sourceId}`, label: "Adiantamento do pedido de compra" };
+  // Adiantamento de despesas e diferença de prestação de contas não têm página própria: ficam na lista de despesas
+  if (sourceType === "EXPENSE_ADVANCE" || sourceId.startsWith("advance:")) return { href: "/app/despesas", label: "Adiantamento de despesas" };
   if (sourceType.startsWith("EXPENSE")) return { href: `/app/despesas/${sourceId}`, label: "Despesa" };
-  return { href: "#", label: sourceType };
+  return null;
 }
 
 export default async function TitlePage({ params }: { params: Promise<{ kind: string; id: string }> }) {

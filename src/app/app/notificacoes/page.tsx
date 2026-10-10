@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, EmptyState } from "@/components/ui/page";
 import { ActionButton } from "@/components/ui/form";
 import { requireCtx } from "@/server/auth/next";

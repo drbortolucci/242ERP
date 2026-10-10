@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, Card, EmptyState } from "@/components/ui/page";
 import { requireCtx } from "@/server/auth/next";
 import { can } from "@/server/context";
