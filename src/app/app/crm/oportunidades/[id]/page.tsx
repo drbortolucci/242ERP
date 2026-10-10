@@ -1,5 +1,5 @@
 import { toPlain } from "@/lib/utils";
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { notFound } from "next/navigation";
 import { PageHeader, Card, DefinitionList, StatusBadge, Notice } from "@/components/ui/page";
 import { DataTable } from "@/components/ui/table";

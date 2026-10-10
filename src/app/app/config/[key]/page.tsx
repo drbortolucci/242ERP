@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { PageHeader, Card, StatusBadge } from "@/components/ui/page";
 import { DataTable, Pagination, Toolbar } from "@/components/ui/table";
 import { ActionButton } from "@/components/ui/form";
 import { requireCtx } from "@/server/auth/next";
+import { pagePerm } from "@/server/page-guard";
 import { getConfigEntity } from "@/modules/config/registry";
 import { listConfig, lookupOptions } from "@/modules/config/service";
 import { pageQuery, type SearchParams } from "@/lib/query";
@@ -17,6 +18,7 @@ export default async function ConfigListPage({ params, searchParams }: { params:
   const e = getConfigEntity(key);
   if (!e) notFound();
   const ctx = await requireCtx();
+  pagePerm(ctx, "settings.manage");
   const q = pageQuery(sp);
   const { rows, total, labels } = await listConfig(ctx, key, q);
   const lookups: Record<string, { value: string; label: string }[]> = {};

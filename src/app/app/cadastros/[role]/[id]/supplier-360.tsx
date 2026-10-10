@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import type { Party } from "@prisma/client";
 import type { Ctx } from "@/server/context";
 import { Card, DefinitionList, Grid, Stat, StatusBadge, Badge, Notice } from "@/components/ui/page";

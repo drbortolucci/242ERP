@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/access-link";
 import { getTerms } from "@/modules/sectors/service";
 import type { Party } from "@prisma/client";
 import type { Ctx } from "@/server/context";
