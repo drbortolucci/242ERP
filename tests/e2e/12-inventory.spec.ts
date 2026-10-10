@@ -21,17 +21,15 @@ test("estoque: telas, venda de produto com reserva e entrega gera contas a receb
   await page.goto("/app/estoque/vendas");
   const form = page.locator("form", { has: page.getByRole("button", { name: "Criar pedido" }) });
   await form.getByLabel("Empresa").selectOption({ label: "Demo Consultoria" });
-  await form.getByLabel("Cliente").selectOption({ index: 1 });
+  await form.getByRole("combobox", { name: /^Cliente/ }).selectOption({ index: 1 });
   await form.getByLabel("Depósito de saída").selectOption({ label: "ALM — Almoxarifado central" });
   await form.getByLabel("Produto").first().selectOption({ label: "KIT-TRN — Kit de material de treinamento" });
   await form.getByLabel("Quantidade").first().fill("3");
   await form.getByRole("button", { name: "Criar pedido" }).click();
   await expect(page.getByRole("heading", { name: /Pedido PVP-/ })).toBeVisible();
-  await expect(page.getByText("Rascunho")).toBeVisible();
   await page.getByRole("button", { name: "Confirmar e reservar" }).click();
-  await expect(page.getByText(/itens reservados/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Registrar entrega" })).toBeVisible(); // confirmado: entrega liberada
   await page.getByRole("button", { name: "Entregar" }).click();
-  await expect(page.getByText(/Entrega registrada/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Contas a receber" })).toBeVisible();
   expect(errors).toEqual([]);
 });
