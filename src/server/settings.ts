@@ -21,7 +21,7 @@ export const SETTING_DEFAULTS = {
     defaultDueDays: 30,
   },
   modules: {
-    enabled: ["crm", "projects", "resources", "timesheet", "expenses", "procurement", "ams", "billing", "finance", "controlling", "portal"],
+    enabled: ["crm", "projects", "resources", "timesheet", "expenses", "procurement", "ams", "billing", "finance", "controlling", "portal", "inventory"],
   },
   closing: {
     requireReasonToReopen: true,

@@ -12,6 +12,10 @@
  *  Deduções gerenciais ............... receita × alíquota gerencial do contrato (informada pela empresa)
  *  Financeiro ........................ juros/multas/descontos das liquidações
  *  Comissões ......................... provisões e reversões
+ *  Venda de produtos (entregue) ...... receita por item (conta do produto ou venda de mercadorias) e frete
+ *  Estoque ........................... custo das mercadorias vendidas (saídas por venda e estornos), consumo
+ *                                       apropriado a projeto/centro de custo, perdas e ajustes de inventário.
+ *                                       Compras de itens de estoque não são custo na compra: viram custo na saída.
  */
 import { requirePerm, requireWritable, type Ctx } from "@/server/context";
 import { audit } from "@/server/audit";
@@ -54,12 +58,25 @@ export async function expectedPostings(ctx: Ctx, companyId: string, month: strin
   // 2) Documentos de fornecedor aprovados (e estorno dos cancelados já lançados)
   const invs = await ctx.db.supplierInvoice.findMany({ where: { companyId, competence: { gte: from, lte: to }, status: { in: ["APPROVED", "CANCELED"] } } });
   const pos = new Map((await ctx.db.purchaseOrder.findMany({ where: { id: { in: invs.map((i) => i.purchaseOrderId).filter((x): x is string => !!x) } } })).map((p) => [p.id, p]));
+  const stockShare = new Map<string, ReturnType<typeof dec>>();
+  if (pos.size) {
+    const poLines = await ctx.db.purchaseOrderLine.findMany({ where: { purchaseOrderId: { in: [...pos.keys()] }, productId: { not: null } } });
+    const tracked = new Set((await ctx.db.product.findMany({ where: { id: { in: poLines.map((l) => l.productId!) }, tracksStock: true }, select: { id: true } })).map((p) => p.id));
+    for (const po of pos.values()) {
+      const stockAmount = sum(poLines.filter((l) => l.purchaseOrderId === po.id && tracked.has(l.productId!)).map((l) => l.amount));
+      if (stockAmount.gt(0) && dec(po.totalAmount).gt(0)) stockShare.set(po.id, stockAmount.div(dec(po.totalAmount)).gt(1) ? dec(1) : stockAmount.div(dec(po.totalAmount)));
+    }
+  }
   for (const i of invs) {
     if (i.status !== "APPROVED") continue;
     const po = i.purchaseOrderId ? pos.get(i.purchaseOrderId) : null;
     // PJ: o custo chega ao projeto pelas horas aprovadas — a NF não é apropriada ao projeto (evita duplicidade)
     const toProject = po?.projectId && po.kind !== "PJ_PROFESSIONAL" ? po.projectId : null;
-    out.push({ companyId, accountId: po?.accountId ?? undefined, accountKey: po?.accountId ? undefined : "THIRD_PARTY_COST", amount: dec(i.amount), dedupeKey: `SUPINV:${i.id}`, sourceType: "SUPPLIER_INVOICE", sourceId: i.id, projectId: toProject, costCenterId: po?.costCenterId ?? null, supplierPartyId: i.supplierPartyId, contractId: toProject ? proj.get(toProject)?.contractId ?? null : null, description: `Documento ${i.number} — pedido ${po?.number ?? ""}` });
+    // Itens de estoque do pedido não são custo na compra (entram no estoque; o custo ocorre na saída)
+    const share = po ? stockShare.get(po.id) ?? dec(0) : dec(0);
+    const amount = share.gt(0) ? money(dec(i.amount).times(dec(1).minus(share))) : dec(i.amount);
+    if (amount.isZero()) continue;
+    out.push({ companyId, accountId: po?.accountId ?? undefined, accountKey: po?.accountId ? undefined : "THIRD_PARTY_COST", amount, dedupeKey: `SUPINV:${i.id}`, sourceType: "SUPPLIER_INVOICE", sourceId: i.id, projectId: toProject, costCenterId: po?.costCenterId ?? null, supplierPartyId: i.supplierPartyId, contractId: toProject ? proj.get(toProject)?.contractId ?? null : null, description: `Documento ${i.number} — pedido ${po?.number ?? ""}` });
   }
   // 3) Despesas aprovadas
   const cats = new Map((await ctx.db.expenseCategory.findMany()).map((c) => [c.id, c]));
@@ -138,6 +155,37 @@ export async function expectedPostings(ctx: Ctx, companyId: string, month: strin
   // 8) Folha importada
   const imports = await ctx.db.payrollImport.findMany({ where: { companyId, competence: civil(monthStart(month)), status: "POSTED" } });
   for (const l of await ctx.db.payrollImportLine.findMany({ where: { importId: { in: imports.map((i) => i.id) } } })) out.push({ companyId, accountKey: "PAYROLL", amount: dec(l.amount), dedupeKey: `PAYROLL:${l.id}`, sourceType: "PAYROLL_IMPORT", sourceId: l.importId, costCenterId: l.costCenterId, professionalId: l.professionalId, description: l.description });
+  // 9) Venda de produtos entregue: receita por item e frete
+  const orders = await ctx.db.productOrder.findMany({ where: { companyId, status: "DELIVERED", deliveredAt: { gte: from, lte: to } } });
+  if (orders.length) {
+    const olines = await ctx.db.productOrderLine.findMany({ where: { orderId: { in: orders.map((o) => o.id) } } });
+    const prods = new Map((await ctx.db.product.findMany({ where: { id: { in: olines.map((l) => l.productId) } } })).map((p) => [p.id, p]));
+    for (const o of orders) {
+      for (const l of olines.filter((x) => x.orderId === o.id)) {
+        const p = prods.get(l.productId);
+        if (dec(l.amount).isZero()) continue;
+        out.push({ companyId, accountId: p?.revenueAccountId ?? undefined, accountKey: p?.revenueAccountId ? undefined : "REVENUE_GOODS", amount: dec(l.amount), dedupeKey: `GSALE:${l.id}`, sourceType: "REVENUE_RECOGNITION", sourceId: o.id, partyId: o.partyId, description: `Venda ${o.number} — ${l.description}`, ruleRef: "ON_DELIVERY" });
+      }
+      if (dec(o.freightAmount).gt(0)) out.push({ companyId, accountKey: "REVENUE_GOODS", amount: dec(o.freightAmount), dedupeKey: `GSALE:FRT:${o.id}`, sourceType: "REVENUE_RECOGNITION", sourceId: o.id, partyId: o.partyId, description: `Frete cobrado — ${o.number}`, ruleRef: "ON_DELIVERY" });
+    }
+  }
+  // 10) Estoque: custo das vendas, consumo e ajustes (custo positivo = despesa; entradas de ajuste reduzem o custo)
+  const movs = await ctx.db.stockMovement.findMany({ where: { companyId, date: { gte: from, lte: to }, type: { in: ["SALE", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "COUNT_ADJUSTMENT", "CONSUMPTION", "REVERSAL"] } } });
+  if (movs.length) {
+    const origins = new Map((await ctx.db.stockMovement.findMany({ where: { id: { in: movs.map((m) => m.reversalOfId).filter((x): x is string => !!x) } } })).map((m) => [m.id, m]));
+    const prods = new Map((await ctx.db.product.findMany({ where: { id: { in: movs.map((m) => m.productId) } } })).map((p) => [p.id, p]));
+    for (const m of movs) {
+      const kind = m.type === "REVERSAL" ? origins.get(m.reversalOfId ?? "")?.type : m.type;
+      if (!kind || !["SALE", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "COUNT_ADJUSTMENT", "CONSUMPTION"].includes(kind)) continue;
+      const amount = money(dec(m.totalCost).negated());
+      if (amount.isZero()) continue;
+      const p = prods.get(m.productId);
+      const base = { companyId, amount, dedupeKey: `STK:${m.id}`, sourceId: m.id, projectId: m.projectId, costCenterId: m.costCenterId, partyId: m.partyId, description: `${m.number} — ${p?.code ?? ""} ${p?.name ?? ""}${m.type === "REVERSAL" ? " (estorno)" : ""}` };
+      if (kind === "SALE") out.push({ ...base, accountId: p?.costAccountId ?? undefined, accountKey: p?.costAccountId ? undefined : "COGS", sourceType: "COGS" });
+      else if (kind === "CONSUMPTION") out.push({ ...base, accountId: p?.costAccountId ?? undefined, accountKey: p?.costAccountId ? undefined : "LICENSE_COST", sourceType: "STOCK_CONSUMPTION", contractId: m.projectId ? proj.get(m.projectId)?.contractId ?? null : null });
+      else out.push({ ...base, accountKey: "INVENTORY_ADJUSTMENTS", sourceType: "STOCK_ADJUSTMENT" });
+    }
+  }
   return out;
 }
 
@@ -159,7 +207,7 @@ export async function syncLedger(ctx: Ctx, companyId: string, monthIn: string) {
   });
   // estornos: lançamentos de origem que não é mais esperada (ex.: NF cancelada, item de medição removido)
   const expectedKeys = new Set(expected.map((p) => p.dedupeKey));
-  const reversible = existing.filter((e) => e.dedupeKey && !e.reversalOfId && !e.dedupeKey.startsWith("REVERSAL:") && /^(SUPINV|REV|DED|EXP|PAY):/.test(e.dedupeKey) && !/^REV:(POC|SL|MS):/.test(e.dedupeKey) && !/^DED:REV:(POC|SL|MS):/.test(e.dedupeKey) && !expectedKeys.has(e.dedupeKey) && !have.has(`REVERSAL:${e.dedupeKey}`));
+  const reversible = existing.filter((e) => e.dedupeKey && !e.reversalOfId && !e.dedupeKey.startsWith("REVERSAL:") && /^(SUPINV|REV|DED|EXP|PAY|GSALE):/.test(e.dedupeKey) && !/^REV:(POC|SL|MS):/.test(e.dedupeKey) && !/^DED:REV:(POC|SL|MS):/.test(e.dedupeKey) && !expectedKeys.has(e.dedupeKey) && !have.has(`REVERSAL:${e.dedupeKey}`));
   const reversals = reversible.map((e) => ({ organizationId: ctx.orgId, companyId, competence: civil(month), accountId: e.accountId, amount: dec(e.amount).negated(), projectId: e.projectId, costCenterId: e.costCenterId, contractId: e.contractId, sourceType: "REVERSAL", sourceId: e.sourceId, reversalOfId: e.id, description: "Estorno: origem cancelada", dedupeKey: `REVERSAL:${e.dedupeKey}`, createdById: ctx.userId }));
   await ctx.db.$transaction(async (tx) => {
     if (rows.length) await tx.managerialEntry.createMany({ data: rows, skipDuplicates: true });

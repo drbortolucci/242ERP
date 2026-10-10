@@ -5,7 +5,7 @@ import { requireCtx } from "@/server/auth/next";
 import { getSetting } from "@/server/settings";
 import { savePoliciesAction } from "../special-actions";
 
-const MODULES = [["crm", "CRM e propostas"], ["projects", "Projetos"], ["resources", "Recursos"], ["timesheet", "Horas"], ["expenses", "Despesas"], ["procurement", "Suprimentos"], ["ams", "Atendimento recorrente (AMS)"], ["billing", "Faturamento"], ["finance", "Financeiro"], ["controlling", "Controladoria"], ["portal", "Portais"]];
+const MODULES = [["crm", "CRM e propostas"], ["projects", "Projetos"], ["resources", "Recursos"], ["timesheet", "Horas"], ["expenses", "Despesas"], ["procurement", "Suprimentos"], ["inventory", "Estoque e vendas de produtos"], ["ams", "Atendimento recorrente (AMS)"], ["billing", "Faturamento"], ["finance", "Financeiro"], ["controlling", "Controladoria"], ["portal", "Portais"]];
 export default async function PoliciesPage() {
   const ctx = await requireCtx();
   pagePerm(ctx, "settings.manage");

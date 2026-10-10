@@ -6,6 +6,7 @@ import { prisma } from "../src/server/db";
 import { ensurePlans } from "../src/modules/saas/plans";
 import { hashPassword } from "../src/server/auth/crypto";
 import { seedDemo } from "./seed-demo";
+import { seedInventory } from "./seed-inventory";
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "Demo@2026local";
 const LOCAL = !["staging"].includes(process.env.APP_ENV ?? "");
@@ -23,6 +24,8 @@ async function main() {
   } else {
     await seedDemo(DEMO_PASSWORD);
   }
+  // Módulos adicionados depois da carga inicial: dados de demonstração incrementais (idempotentes)
+  await seedInventory(pw);
   console.log(LOCAL ? `\nCredenciais de demonstração (somente ambiente local) — senha: ${DEMO_PASSWORD}` : "\nUsuários de demonstração (senha definida em DEMO_PASSWORD, não exibida):");
   const users = await prisma.user.findMany({ where: { email: { endsWith: ".local" } }, orderBy: { email: "asc" } });
   for (const u of users) console.log(`  ${u.email.padEnd(40)} ${u.name}`);

@@ -12,6 +12,7 @@ export const DEFAULT_ACCOUNTS: { code: string; name: string; type: "REVENUE" | "
   { code: "1.02", name: "Receita de contratos recorrentes (AMS, manutenção, fee)", type: "REVENUE", systemKey: "REVENUE_AMS", parent: "1" },
   { code: "1.03", name: "Receita de alocação de equipe", type: "REVENUE", systemKey: "REVENUE_ALLOCATION", parent: "1" },
   { code: "1.04", name: "Reembolso de despesas cobradas", type: "REVENUE", systemKey: "REVENUE_REIMBURSEMENT", parent: "1" },
+  { code: "1.05", name: "Receita de venda de mercadorias e produtos", type: "REVENUE", systemKey: "REVENUE_GOODS", parent: "1" },
   { code: "2", name: "Deduções da receita", type: "DEDUCTION" },
   { code: "2.01", name: "Tributos sobre receita (gerencial)", type: "DEDUCTION", systemKey: "DEDUCTION_TAXES", parent: "2" },
   { code: "3", name: "Custos diretos", type: "DIRECT_COST" },
@@ -19,6 +20,8 @@ export const DEFAULT_ACCOUNTS: { code: string; name: string; type: "REVENUE" | "
   { code: "3.02", name: "Custo de terceiros e subcontratados", type: "DIRECT_COST", systemKey: "THIRD_PARTY_COST", parent: "3" },
   { code: "3.03", name: "Despesas diretas de projetos e serviços", type: "DIRECT_COST", systemKey: "DIRECT_EXPENSES", parent: "3" },
   { code: "3.04", name: "Materiais, licenças e outros custos atribuíveis", type: "DIRECT_COST", systemKey: "LICENSE_COST", parent: "3" },
+  { code: "3.05", name: "Custo das mercadorias e produtos vendidos", type: "DIRECT_COST", systemKey: "COGS", parent: "3" },
+  { code: "3.06", name: "Perdas e ajustes de estoque", type: "DIRECT_COST", systemKey: "INVENTORY_ADJUSTMENTS", parent: "3" },
   { code: "4", name: "Despesas operacionais", type: "OPERATING_EXPENSE" },
   { code: "4.01", name: "Pessoal (folha)", type: "OPERATING_EXPENSE", systemKey: "PAYROLL", parent: "4" },
   // Conta redutora: absorção do custo de pessoal apropriado aos projetos (evita duplicidade com a folha)

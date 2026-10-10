@@ -99,6 +99,15 @@ Sinais do portfólio: atraso (término planejado vencido ou atividades vencidas)
 | Profissional PJ | pedido `PJ_PROFESSIONAL` apropriado na conta de pessoal; o custo chega ao projeto pelas horas aprovadas × custo/hora — a NF do PJ **não** soma de novo no projeto |
 | Ativos | recebimento de licença/assinatura/equipamento/material cria item de ativo; licenças e assinaturas herdam a vigência do pedido como data de renovação (alerta 60 dias) |
 
+## 8.1 Estoque — custo médio móvel (`src/domain/stock.ts`, `src/modules/inventory/*`)
+- Entrada: `valor = valor + arredondar(qtd × custo unitário, 2)`; `custo médio = valor ÷ quantidade` (6 casas).
+- Saída: `custo = arredondar(qtd × custo médio, 2)`; se zerar o saldo, o custo é o valor remanescente (sem resíduo).
+- Estorno de entrada retira exatamente o valor que entrou; estorno de saída retorna pelo mesmo custo unitário.
+- Movimento com data anterior ao último do produto no depósito é recusado (preserva o custo médio).
+- Inventário: diferença = contado − saldo no encerramento; positiva entra ao custo médio vigente, negativa sai ao custo médio.
+- Disponível = saldo − reservado (pedidos confirmados). Reposição sugerida = máximo (ou 2 × mínimo) − disponível.
+- Razão gerencial: receita por item entregue (conta do produto ou "venda de mercadorias") e frete; CMV pelas saídas por venda; consumo na conta de custo do produto (padrão "materiais") no projeto/centro de custo; ajustes em "perdas e ajustes de estoque". Documento de fornecedor de pedido com itens de estoque lança como custo só a parcela que não é estoque.
+
 ## 9. AMS — SLA e banco de horas (`src/domain/sla.ts`, `src/domain/hour-bank.ts`, `src/modules/ams/*`)
 | Regra | Fórmula / comportamento |
 |-------|-------------------------|

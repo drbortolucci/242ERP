@@ -46,6 +46,18 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "Estoque",
+    items: [
+      { label: "Produtos", href: "/app/estoque/produtos", perm: "inventory.read", module: "inventory" },
+      { label: "Posição de estoque", href: "/app/estoque/posicao", perm: "inventory.read", module: "inventory" },
+      { label: "Movimentos", href: "/app/estoque/movimentos", perm: "inventory.read", module: "inventory" },
+      { label: "Inventários", href: "/app/estoque/inventarios", perm: ["inventory.adjust", "inventory.read"], module: "inventory" },
+      { label: "Reposição", href: "/app/estoque/reposicao", perm: "inventory.read", module: "inventory" },
+      { label: "Depósitos", href: "/app/estoque/depositos", perm: "inventory.read", module: "inventory" },
+      { label: "Vendas de produtos", href: "/app/estoque/vendas", perm: ["sales.goods", "inventory.read"], module: "inventory" },
+    ],
+  },
+  {
     label: "AMS",
     items: [
       { label: "Chamados", href: "/app/ams/chamados", perm: "ams.read", module: "ams" },

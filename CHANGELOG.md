@@ -88,6 +88,21 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - **Segurança**: administradores só concedem permissões sensíveis que possuem e apenas dentro das próprias empresas, sem alterar o próprio acesso; usuários do portal recebem apenas permissões de portal; chaves de API exigem alcance total, escopos dentro das permissões do criador e deixam de valer se o criador perder o acesso; exportação integral apenas para administrador interno com acesso a todas as empresas; segredos de webhook de exemplo recusados fora de desenvolvimento/teste; apuração do banco de horas exige permissão; escopo de empresa verificado em atividades, entregáveis, registros, marcos e anexos; organização suspensa/cancelada bloqueia todas as escritas restantes; MFA ativo não é desativado ao reconfigurar; redirecionamento pós-login aceita apenas caminhos internos; módulos fora do plano bloqueados também por URL.
 - **Interface**: formulários com `method="post"` (sem vazamento de dados na URL antes da hidratação) e ids únicos (`useId`); Enter em campos de motivo não aprova; custo de referência oculto para quem não vê custos; P&L e fechamento com permissões coerentes; links de títulos corrigidos; linhas da oportunidade com chave estável; alocação a partir de solicitação em total de horas; tela de perfis renderiza um perfil por vez (página ~10× menor; elimina o erro intermitente de hidratação #418 observado em páginas muito grandes — ver nota técnica em `docs/BACKLOG.md`).
 
+## [1.2.0] — Estoque e vendas de produtos
+### Adicionado
+- Produtos (mercadoria, material de uso/consumo, produção própria) com unidade, categoria, preço de venda, estoque mínimo/máximo, código de barras, NCM e origem informados pela empresa, contas gerenciais de receita e custo.
+- Depósitos por empresa; saldo por produto e depósito com reserva; custo médio móvel com movimentos imutáveis, cronológicos e estornáveis (kardex).
+- Entradas por compra: itens de estoque no pedido de compra, recebimento dá entrada no depósito ao preço do pedido; devolução a fornecedor. Itens de estoque não viram ativos nem custo na compra.
+- Ajustes, consumo apropriado a projeto/centro de custo, saldo inicial de implantação, transferências entre depósitos, inventário (contagem física) com ajuste das diferenças.
+- Pedidos de venda de produtos: rascunho → confirmado (reserva) → entregue (baixa ao custo médio, títulos a receber pela condição de pagamento) → cancelamento com retorno ao estoque.
+- Razão gerencial: receita de venda de mercadorias, custo das mercadorias vendidas, perdas e ajustes de estoque, consumo em projetos.
+- Posição de estoque, sugestão de reposição, perfil "Estoque e expedição", permissões `inventory.*` e `sales.goods`, módulo `inventory` nos planos Professional e Enterprise.
+### Corrigido
+- Links para páginas sem acesso (permissão ou módulo fora do plano) passam a aparecer como texto, com um mapa central de acesso às rotas.
+- Cadastros › Serviços deixava de abrir (erro 500) para perfis sem permissão de configuração; agora mostra o catálogo para consulta.
+- Título a pagar de adiantamento de despesas apontava para uma página inexistente.
+- Produção: aplicação conectada ao pooler em modo transação (o modo sessão esgotava o limite de clientes).
+
 ## [1.1.0] — Multissetor (empresas de serviços)
 ### Adicionado
 - Setor de atividade escolhido no cadastro e alterável no configurador: consultoria e TI (padrão e especialidade), consultoria de gestão, engenharia/arquitetura, agências, escritórios contábeis/jurídicos, manutenção e serviços em campo, software, educação e serviços em geral.

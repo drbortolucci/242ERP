@@ -26,10 +26,10 @@ npm run worker                  # tarefas em segundo plano (outro terminal)
 Credenciais de demonstração são exibidas ao final do `db:seed` e valem **somente** para o ambiente local.
 
 ## Usuários de demonstração
-Senha exibida ao final do seed (somente local). Perfis: `admin@`, `diretor@`, `comercial@`, `pmo@`, `recursos@`, `financeiro@`, `controladoria@`, `compras@`, `ams@`, `consultor@demo.local`; portal do cliente: `cliente@alfa.local`, `cliente@gama.local`, `cliente@beta.local`; organização isolada: `admin@outra.local`; plataforma: `plataforma@242erp.local`.
+Senha exibida ao final do seed (somente local). Perfis: `admin@`, `diretor@`, `comercial@`, `pmo@`, `recursos@`, `financeiro@`, `controladoria@`, `compras@`, `ams@`, `estoque@`, `consultor@demo.local`; portal do cliente: `cliente@alfa.local`, `cliente@gama.local`, `cliente@beta.local`; organização isolada: `admin@outra.local`; plataforma: `plataforma@242erp.local`.
 
 ## Módulos
-CRM · propostas · contratos e comissões · projetos e portfólio · recursos · horas · despesas · suprimentos (3 vias) · AMS (SLA, banco de horas) · medição e faturamento · NFS-e (adaptador) · contas a receber/pagar · tesouraria e conciliação · controladoria (razão, rateios, orçamento, DRE, P&L, fechamento) · portal do cliente · painéis por perfil · API pública · administração SaaS.
+CRM · propostas · contratos e comissões · projetos e portfólio · recursos · horas · despesas · suprimentos (3 vias) · estoque (custo médio, inventário, reposição) e vendas de produtos · AMS (SLA, banco de horas) · medição e faturamento · NFS-e (adaptador) · contas a receber/pagar · tesouraria e conciliação · controladoria (razão, rateios, orçamento, DRE, P&L, fechamento) · portal do cliente · painéis por perfil · API pública · administração SaaS.
 
 ## Verificações
 ```bash
