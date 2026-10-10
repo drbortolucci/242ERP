@@ -88,6 +88,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - **Segurança**: administradores só concedem permissões sensíveis que possuem e apenas dentro das próprias empresas, sem alterar o próprio acesso; usuários do portal recebem apenas permissões de portal; chaves de API exigem alcance total, escopos dentro das permissões do criador e deixam de valer se o criador perder o acesso; exportação integral apenas para administrador interno com acesso a todas as empresas; segredos de webhook de exemplo recusados fora de desenvolvimento/teste; apuração do banco de horas exige permissão; escopo de empresa verificado em atividades, entregáveis, registros, marcos e anexos; organização suspensa/cancelada bloqueia todas as escritas restantes; MFA ativo não é desativado ao reconfigurar; redirecionamento pós-login aceita apenas caminhos internos; módulos fora do plano bloqueados também por URL.
 - **Interface**: formulários com `method="post"` (sem vazamento de dados na URL antes da hidratação) e ids únicos (`useId`); Enter em campos de motivo não aprova; custo de referência oculto para quem não vê custos; P&L e fechamento com permissões coerentes; links de títulos corrigidos; linhas da oportunidade com chave estável; alocação a partir de solicitação em total de horas; tela de perfis renderiza um perfil por vez (página ~10× menor; elimina o erro intermitente de hidratação #418 observado em páginas muito grandes — ver nota técnica em `docs/BACKLOG.md`).
 
+## [1.3.0] — Cobrança bancária e conciliação automática
+### Adicionado
+- Cobrança de títulos a receber por boleto registrado ou PIX com vencimento, a partir do título: valor do saldo em aberto, multa e juros informados conforme contrato, novo vencimento curto para título vencido, uma cobrança ativa por título.
+- Adaptador de provedor de cobrança (simulado em desenvolvimento e homologação; códigos de teste não pagáveis) e webhook autenticado por HMAC com baixa automática: liquidação do título na conta da cobrança, valor pago acima do saldo como juros, pagamento parcial mantém o saldo, pagamento de cobrança cancelada fica para tratamento manual; idempotente.
+- Financeiro › Cobranças bancárias (lista, filtros, totais em cobrança) e trilha de eventos por cobrança.
+- Conciliação automática do extrato: linha com único movimento do livro de mesmo valor em até 3 dias; regras por descrição (ex.: tarifas, rendimentos) que lançam e conciliam; o restante fica para tratamento manual.
+
 ## [1.2.0] — Estoque e vendas de produtos
 ### Adicionado
 - Produtos (mercadoria, material de uso/consumo, produção própria) com unidade, categoria, preço de venda, estoque mínimo/máximo, código de barras, NCM e origem informados pela empresa, contas gerenciais de receita e custo.
